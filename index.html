@@ -1279,18 +1279,18 @@ function table(){
      ['\\text{false alarms}', 1],
      ['\\text{latched, \\%}', 1]].forEach(function(h){
        const e = th(h[0]); if (h[1]) e.style.textAlign = 'right'; thr.appendChild(e);});
-    const sc = CHART_ORDER.map(function(w){return chartScore(w);});
-    const delays = sc.map(function(x){return x.delay === null ? Infinity : x.delay;});
+    const AV = avgChart();
+    const delays = CHART_ORDER.map(function(w){return AV[w].delay === null ? Infinity : AV[w].delay;});
     const bestD = Math.min.apply(null, delays);
-    sc.forEach(function(x){
-      const tr = document.createElement('tr');
-      if (x.which === chart) tr.className = 'sel';
+    CHART_ORDER.forEach(function(w){
+      const x = AV[w], tr = document.createElement('tr');
+      if (w === chart) tr.className = 'sel';
       const win = x.delay !== null && x.delay === bestD && bestD < Infinity;
-      tr.appendChild(th('\\text{' + CHARTNAME[x.which] + '}' + (win ? '\\ \\bigstar' : '')));
-      tr.appendChild(td(x.delay === null ? '\\text{never}' : String(x.delay),
+      tr.appendChild(th('\\text{' + CHARTNAME[w] + '}' + (win ? '\\ \\bigstar' : '')));
+      tr.appendChild(td(x.delay === null ? '\\text{never}' : x.delay.toFixed(1),
                         x.delay === null ? 'bad' : (win ? 'win' : '')));
-      tr.appendChild(td(String(x.ep), x.ep > 0 ? 'bad' : ''));
-      tr.appendChild(td(x.latch === null ? '\\text{--}' : String(x.latch)));
+      tr.appendChild(td(x.ep.toFixed(2), x.ep > 0.005 ? 'bad' : ''));
+      tr.appendChild(td(x.latch === null ? '\\text{--}' : String(Math.round(x.latch))));
       tbb.appendChild(tr);});
     return;}
   const R=ranking();
@@ -1310,9 +1310,15 @@ function table(){
       ['\\text{latched, \\%}', 1]];
   /* the header of a number column is right-aligned like the number under it */
   cols.forEach(function(h){const e=th(h[0]);if(h[1])e.style.textAlign='right';thr.appendChild(e);});
+  const AV=(tab===T_SERVICE)?avgService():null;
+  let starK=null;
+  if(AV){let bv=-1e9;[1,2,3,4,5].forEach(function(k){const a=AV[k];
+    const v=a.delay===null?-1e9:1000-a.delay-a.ep*0.001;
+    if(v>bv){bv=v;starK=k;}});if(AV[starK].delay===null)starK=null;}
   [1,2,3,4,5].forEach(function(k){const M=calc(k),tr=document.createElement('tr');
     if(k===model)tr.className='sel';
-    tr.appendChild(th('\\text{'+MODNAME[k]+'}'+(k===R.winner&&R.anyDetects?'\\ \\bigstar':'')));
+    const starred=(tab===T_SERVICE)?(k===starK):(k===R.winner&&R.anyDetects);
+    tr.appendChild(th('\\text{'+MODNAME[k]+'}'+(starred?'\\ \\bigstar':'')));
     if(tab===T_HIST){
       /* what the method actually is — a number for the two flat ones, a formula for the rest.
          Without it the first column is five names and no content. */
@@ -1326,11 +1332,12 @@ function table(){
         tr.appendChild(td(M.bias.toFixed(2),Math.abs(M.bias)>0.05?'bad':''));
         tr.appendChild(td(M.ac1.toFixed(2)));}}
     else{
+      const a=AV[k];
       tr.appendChild(td(M.limitC.toFixed(2),k===1?'bad':''));
-      tr.appendChild(td(M.delay===null?'\\text{never}':String(M.delay),
-                        M.delay===null?'bad':(k===R.winner&&R.anyDetects?'win':'')));
-      tr.appendChild(td(String(M.ep),M.ep>0?'bad':''));
-      tr.appendChild(td(M.latch===null?'\\text{--}':String(M.latch)));}
+      tr.appendChild(td(a.delay===null?'\\text{never}':a.delay.toFixed(1),
+                        a.delay===null?'bad':(k===starK?'win':'')));
+      tr.appendChild(td(a.ep.toFixed(2),a.ep>0.005?'bad':''));
+      tr.appendChild(td(a.latch===null?'\\text{--}':String(Math.round(a.latch))));}
     tbb.appendChild(tr);});}
 
 /* the model, written out — value or equation, in the same words the manual uses */
@@ -1344,15 +1351,15 @@ const FORMULA={1:'\\hat y_t = 75.0',
 const TABS=[
  /* one line each. Anything longer is commentary, and commentary belongs nowhere on this page —
     the figure and the table say what happened. */
- {name:'\\text{1. Train}',
+ {name:'\\text{1. Baseline}',
   goal:'\\text{Which method explains this machine? Walk the four machines and read }'+
        '\\textit{sd}\\text{, }\\textit{bias}\\text{, }\\textit{ac1}\\text{.}'},
- {name:'\\text{2. Test}',
+ {name:'\\text{2. Monitoring}',
   goal:'\\text{Same fit, clock running. Each method alarms on its own limit — read first alarm and false alarms.}'},
  /* One model, three charts — the mirror of tab 2, which was one chart and five models.
     The shift here is deliberately far smaller than tab 2's: every chart notices a huge shift
     at once, so a huge shift cannot tell them apart. */
- {name:'\\text{3. Alarm rules}',
+ {name:'\\text{3. Detection}',
   goal:'\\text{Method pinned to Regression on flow. Three rules, same false-alarm rate — which speaks first?}'}];
 
 function paint(name,v){document.querySelectorAll('.seg[data-for="'+name+'"] button').forEach(function(b){
@@ -1394,6 +1401,28 @@ function syncRows(){
       :(FSZ.step[fsize].toFixed(1)+'\\ ^\\circ\\text{C at once}'),
     document.getElementById('fsU'));}
 
+/* the displayed score is the mean over the SAME 24 seeds the slides print -- one seed's
+   'false alarms 0' says nothing. The chart keeps the current seed as the worked picture. */
+function avgService(){const S0=seed,A={};
+  [1,2,3,4,5].forEach(function(k){A[k]={d:[],ep:[],la:[]};});
+  for(let s2=1;s2<=24;s2++){seed=s2;regen();
+    [1,2,3,4,5].forEach(function(k){const M=calc(k);A[k].ep.push(M.ep);
+      if(M.delay!==null){A[k].d.push(M.delay);A[k].la.push(M.latch);}});}
+  seed=S0;regen();
+  const mean=function(v){return v.length?v.reduce(function(x,y){return x+y;},0)/v.length:null;};
+  const out={};[1,2,3,4,5].forEach(function(k){
+    out[k]={delay:mean(A[k].d),ep:mean(A[k].ep),latch:mean(A[k].la)};});
+  return out;}
+function avgChart(){const S0=seed,A={};
+  CHART_ORDER.forEach(function(w){A[w]={d:[],ep:[],la:[]};});
+  for(let s2=1;s2<=24;s2++){seed=s2;regen();
+    CHART_ORDER.forEach(function(w){const x=chartScore(w);A[w].ep.push(x.ep);
+      if(x.delay!==null){A[w].d.push(x.delay);A[w].la.push(x.latch);}});}
+  seed=S0;regen();
+  const mean=function(v){return v.length?v.reduce(function(x,y){return x+y;},0)/v.length:null;};
+  const out={};CHART_ORDER.forEach(function(w){
+    out[w]={delay:mean(A[w].d),ep:mean(A[w].ep),latch:mean(A[w].la)};});
+  return out;}
 function refresh(){syncRows();regen();draw();table();}
 function setSeg(name,v){
   const row={machine:'c-machine',model:'c-model',fault:'c-fault',fsize:'c-fsize',
