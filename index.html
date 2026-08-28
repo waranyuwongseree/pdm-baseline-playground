@@ -326,7 +326,7 @@ body.distcls .wrap{height:auto;max-height:900px}   /* เนื้อหาส�
         </div>
       </div>
       <div class="drow" id="c-chart">
-        <span class="dlab" style="flex:0 0 auto;color:#475569;font-size:15px;font-weight:600">\(\text{Control chart}\)</span><span style="color:#6b7280;font-size:13px" id="chU"></span>
+        <span class="dlab" style="flex:0 0 auto;color:#475569;font-size:15px;font-weight:600">\(\text{Detection rule}\)</span><span style="color:#6b7280;font-size:13px" id="chU"></span>
         <div class="seg" data-for="chart">
           <button type="button" data-val="sh">\(\text{Shewhart}\)</button>
           <button type="button" data-val="we">\(\text{W. Electric}\)</button>
@@ -1291,7 +1291,7 @@ function table(){
     /* One model, four rules -- the mirror image of tab 2. The table scores THE RUN ON
        SCREEN, integers, the same story the red points tell; the run-to-run averages are
        the deck's ARL pages (RIT 2026-08-28). */
-    [['\\text{Control chart}', 0],
+    [['\\text{Detection rule}', 0],
      ['\\text{detection delay, h}', 1],
      ['\\text{lead vs 75 °C, h}', 1],
      ['\\text{precision, \\%}', 1],
@@ -1396,7 +1396,7 @@ function syncRows(){
     document.getElementById('cfU'));
   /* the chart's parameters live in the readout, not on the button — three buttons carrying
      "CUSUM k 0.5, h 6" do not fit a 320px rail and the last one was being sliced off */
-  K({sh:'\\text{limit }3\\,\\text{sd}',we:'\\text{zone rules }1\\text{–}3\\,\\text{sd}',
+  K({sh:'\\text{limit }3\\,\\text{sd}',we:'',
      ew:'\\lambda\\,0.2,\\ L\\,3.0',cu:'k\\,0.5,\\ h\\,6'}[chart],document.getElementById('chU'));
   const reach=(faultKind==='drift'?FSZ.drift[fsize]*(N-FAULT):FSZ.step[fsize]);
   K(faultKind==='drift'
