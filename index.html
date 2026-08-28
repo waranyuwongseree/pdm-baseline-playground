@@ -349,14 +349,6 @@ body.distcls .wrap{height:auto;max-height:900px}   /* เนื้อหาส�
           <button type="button" data-val="step">\(\text{Step jump}\)</button>
         </div>
       </div>
-      <div class="drow" id="c-fsize">
-        <span class="dlab" style="flex:0 0 auto;display:flex;align-items:baseline;gap:5px"><span style="color:#475569;font-size:15px;font-weight:600">\(\text{Fault size}\)</span><span style="color:#6b7280;font-size:13px" id="fsU"></span></span>
-        <div class="seg" data-for="fsize">
-          <button type="button" data-val="0">\(\text{Small}\)</button>
-          <button type="button" data-val="1">\(\text{Medium}\)</button>
-          <button type="button" data-val="2">\(\text{Large}\)</button>
-        </div>
-      </div>
       <div class="drow" id="c-cfsize">
         <span class="dlab" style="flex:0 0 auto;display:flex;align-items:baseline;gap:5px"><span style="color:#475569;font-size:15px;font-weight:600">\(\text{Shift size}\)</span><span style="color:#6b7280;font-size:13px" id="cfU"></span></span>
         <div class="seg" data-for="cfsize">
@@ -820,8 +812,8 @@ if (typeof document !== 'undefined') (function () {
    number written down on tab 1 is the same number tab 2 uses. */
 /* one colour per ROLE (RIT 2026-08-28): navy = any data series, red dashed = any limit,
    amber = the first-alarm line, grey dashed = the expected reference */
-const C={flow:'#33618D',act:'#33618D',res:'#33618D',
-         exp:'#3F9B77',expTx:'#3F6E99',
+const C={flow:'#6E93B8',act:'#6E93B8',res:'#6E93B8',
+         exp:'#1E7A56',expTx:'#3F6E99',
          lim:'#B0503A',fixed:'#B0503A',
          alarm:'#C07E00',alarmBar:'#B0503A',alarmBg:'rgba(0,0,0,0)',
          histBg:'rgba(0,0,0,0)',cleanBg:'rgba(0,0,0,0)',faultBg:'rgba(0,0,0,0)',
@@ -833,7 +825,7 @@ function K(t,el,d){if(!el)return;if(window.katex){try{katex.render(String(t),el,
    the real pump-02 file the workflow reads, which gives the learner a bridge back to it. */
 /* the SIMULATOR timeline is 1440 h; the CLASSROOM pump is the workflow's own 960 h
    (train 480, fault from 768), so the bounds are variables set per data source */
-let N=1440,HIST=720,FAULT=1200,CLEAN_TEST=FAULT-HIST,FAULT_HOURS=N-FAULT;
+let N=960,HIST=480,FAULT=720,CLEAN_TEST=FAULT-HIST,FAULT_HOURS=N-FAULT;
 const SWING=240,DAILY=24,LIMZ=3.0;
 const MACH=[{id:'load',lab:'Swinging load'},{id:'steady',lab:'Steady load'},
             {id:'daily',lab:'Strong daily'},{id:'noise',lab:'No structure'}];
@@ -849,8 +841,8 @@ const CHARTNAME={sh:'Shewhart 3 sd',we:'Western Electric',ew:'EWMA λ 0.2',cu:'C
    clean hours each: Shewhart 741 h between false alarms, EWMA 819, CUSUM 716. Shewhart's 741 is
    the textbook one-sided 3-sigma figure (1/0.00135 = 741), which is a useful check that the
    simulation is behaving. */
-/* we.arl0 from arl_mc_s3.py (two-sided zone tests): WE alarms far more often by design */
-const CHART={sh:{arl0:741},we:{arl0:91},ew:{lam:0.2,L:3.0,arl0:819},cu:{k:0.5,h:6.0,arl0:716}};
+/* arl0 from arl_mc_s3.py, all TWO-SIDED now: WE alarms far more often by design */
+const CHART={sh:{arl0:370},we:{arl0:91},ew:{lam:0.2,L:3.0,arl0:370},cu:{k:0.5,h:6.0,arl0:464}};
 const CHART_ORDER=['sh','we','ew','cu'];
 /* tab 3 needs a much smaller fault than tab 2. Tab 2 argues with a 75 C limit, which the machine
    has to actually reach; tab 3 asks which chart notices a shift first, and every chart notices a
@@ -908,7 +900,7 @@ function faultOn(){return tab!==T_HIST;}
 function faultAmp(){return (tab===T_CHART)?CFSZ[faultKind][cfsize]*SIGMA:FSZ[faultKind][fsize];}
 
 function regen(){
-  N=1440;HIST=720;FAULT=1200;
+  N=960;HIST=480;FAULT=720;
   CLEAN_TEST=FAULT-HIST;FAULT_HOURS=N-FAULT;
   const r=PG.rng(seed*7919+31);
   /* unit-variance gaussian (sum of 12 uniforms) — PG.rng's own gauss has sd 0.29, not 1 */
@@ -984,7 +976,8 @@ function calc(k){
   /* the alert rule sits between the exceedance and the alarm: immediate, or only after
      `persist` consecutive hours beyond the limit (the fix for flicker) */
   const exc=new Array(N).fill(false);
-  for(let i=HIST;i<N;i++)if(ok(o.z[i]))exc[i]=o.z[i]>=o.limitZ;
+  /* two-sided for fitted models; model 1's 75 C line is a ceiling, one side only */
+  for(let i=HIST;i<N;i++)if(ok(o.z[i]))exc[i]=(k===1)?(o.z[i]>=o.limitZ):(Math.abs(o.z[i])>=o.limitZ);
   const alarmed=function(i){for(let q=0;q<persist;q++){const j=i-q;
     if(j<HIST||!exc[j])return false;}return true;};
   let TP=0,FP=0,first=null,ep=0,prevFA=false;
@@ -1026,8 +1019,11 @@ function chartStat(z,which){
   if(which==='ew'){const lam=CHART.ew.lam;let a=0;
     for(let i=0;i<N;i++){if(ok(z[i]))a=lam*z[i]+(1-lam)*a;out[i]=a;}
     return{stat:out,limit:CHART.ew.L*Math.sqrt(lam/(2-lam))};}
-  const k=CHART.cu.k;let a=0;
-  for(let i=0;i<N;i++){if(ok(z[i]))a=Math.max(0,a+z[i]-k);out[i]=a;}
+  /* CUSUM runs BOTH arms (the workflow's cumsum-minus-cummin form); the plot shows
+     whichever arm is taller, so one non-negative statistic against one h */
+  const k=CHART.cu.k;let hi=0,lo=0;
+  for(let i=0;i<N;i++){if(ok(z[i])){hi=Math.max(0,hi+z[i]-k);lo=Math.max(0,lo-z[i]-k);}
+    out[i]=Math.max(hi,lo);}
   return{stat:out,limit:CHART.cu.h};}
 
 function chartScore(which){
@@ -1042,7 +1038,7 @@ function chartScore(which){
         fr=pp>=4||nn>=4;}
       if(!fr&&i>=7){let pp=0;for(let q=0;q<8;q++)if(zz[i-q]>0)pp++;fr=pp===8||pp===0;}
       exc[i]=fr;}}
-  else for(let i=HIST;i<N;i++)if(ok(S.stat[i]))exc[i]=S.stat[i]>=S.limit;
+  else for(let i=HIST;i<N;i++)if(ok(S.stat[i]))exc[i]=Math.abs(S.stat[i])>=S.limit;
   const alarmed=function(i){for(let q=0;q<persist;q++){const j=i-q;
     if(j<HIST||!exc[j])return false;}return true;};
   let TP=0,FP=0,first=null,ep=0,prevFA=false;
@@ -1184,8 +1180,8 @@ function draw(){
   const A2=axes(c,b2,i0,i1-1,sp[0],sp[1],false,'temp, °C');
   marks(b2,A2.PX);
   c.save();c.beginPath();c.rect(b2.l,b2.t,b2.r-b2.l,b2.b-b2.t);c.clip();
-  poly(c,A2.PX,A2.PY,temp,i0,i1,C.act,1.5);
-  if(SHOW.exp&&(model!==1||tab===T_CHART))poly(c,A2.PX,A2.PY,M.ex,i0,i1,C.exp,1.8,[6,4]);
+  poly(c,A2.PX,A2.PY,temp,i0,i1,C.act,1.3);
+  if(SHOW.exp&&(model!==1||tab===T_CHART))poly(c,A2.PX,A2.PY,M.ex,i0,i1,C.exp,2.4,[8,5]);
   c.restore();
   if(SHOW.l75){hline(c,b2,A2.PY,75,C.fixed,[3,3],1.6);
     c.fillStyle=C.fixed;c.font='12px KaTeX_Main';c.textAlign='right';c.textBaseline='bottom';
@@ -1207,7 +1203,7 @@ function draw(){
   const series=onChart?CS.stat:(inZ?M.z:M.res);
   const lim3=onChart?CS.limit:(inZ?M.limitZ:M.limitC0);
   let sr;
-  if(onChart)sr=pad(series.slice(i0,i1).concat([lim3,0]));
+  if(onChart)sr=pad(series.slice(i0,i1).concat([lim3,(chart==='cu')?0:-lim3]));
   else if(inZ)sr=(tab===T_HIST)?[-6,6]:[-6,15];
   else sr=pad(series.slice(i0,i1).concat([lim3,-Math.abs(lim3)||0]));
   /* CUSUM keeps adding, so its statistic runs to 110 while its limit is 6 — on a full-range
@@ -1219,10 +1215,15 @@ function draw(){
   const ly=Math.max(b3.t,Math.min(b3.b,A3.PY(lim3)));
   c.save();c.beginPath();c.rect(b3.l,b3.t,b3.r-b3.l,b3.b-b3.t);c.clip();
   hline(c,b3,A3.PY,0,C.zero,[4,4],1);
-  poly(c,A3.PX,A3.PY,series,i0,i1,C.res,1.5);
+  poly(c,A3.PX,A3.PY,series,i0,i1,C.res,1.3);
   c.restore();
   c.strokeStyle=C.lim;c.lineWidth=1.5;c.setLineDash([7,4]);
   c.beginPath();c.moveTo(b3.l,ly);c.lineTo(b3.r,ly);c.stroke();c.setLineDash([]);
+  /* the lower control limit, wherever the rule is two-sided (RIT 2026-08-28) */
+  {const loV=onChart?((chart==='cu')?null:-lim3):((model===1&&!inZ)?null:(model===1?null:-lim3));
+   if(loV!==null){const ly2=Math.max(b3.t,Math.min(b3.b,A3.PY(loV)));
+     c.strokeStyle=C.lim;c.lineWidth=1.5;c.setLineDash([7,4]);
+     c.beginPath();c.moveTo(b3.l,ly2);c.lineTo(b3.r,ly2);c.stroke();c.setLineDash([]);}}
   edgeMarks(c,b3,A3.PX,series,i0,i1,sr[0],sr[1],C.res);
   /* WHEN it first alarmed -- the dashed line marks the hour in the plot, and the wording
      sits in the key row like every other label, never on top of the data (RIT 2026-08-28) */
@@ -1234,7 +1235,7 @@ function draw(){
     let almArr=null;
     if(onChart){almArr=chartScore(chart).alarmArr;}
     else{const exc2=new Array(N).fill(false);
-      for(let i=HIST;i<N;i++)if(ok(M.z[i]))exc2[i]=M.z[i]>=M.limitZ;
+      for(let i=HIST;i<N;i++)if(ok(M.z[i]))exc2[i]=(model===1)?(M.z[i]>=M.limitZ):(Math.abs(M.z[i])>=M.limitZ);
       almArr=new Array(N).fill(false);
       for(let i=HIST;i<N;i++){let on=true;
         for(let q=0;q<persist;q++){const j=i-q;if(j<HIST||!exc2[j]){on=false;break;}}
@@ -1291,29 +1292,24 @@ function table(){
   const th=function(t,cls){const e=document.createElement('th');if(cls)e.className=cls;K(t,e);return e;};
   const td=function(t,cls){const e=document.createElement('td');if(cls)e.className=cls;K(t,e);return e;};
   if(tab===T_CHART){
-    /* One model, three charts — the mirror image of tab 2, which was one chart and five models.
-       ARL0 is the hours a chart runs on healthy data before it cries wolf once. All three are
-       tuned to roughly the same ARL0 on purpose: without that, "notices sooner" means nothing,
-       because anything notices sooner if you let it shout more often. */
-    /* the three time-based readings (2026-08-28): first alarm as hours after the fault,
-       false alarms as EPISODES, and latched-vs-flickering after the first alarm */
+    /* One model, four rules -- the mirror image of tab 2. The table scores THE RUN ON
+       SCREEN, integers, the same story the red points tell; the run-to-run averages are
+       the deck's ARL pages (RIT 2026-08-28). */
     [['\\text{Control chart}', 0],
-     ['\\text{ARL}_1\\ \\text{(first alarm, h)}', 1],
-     ['\\text{false alarms, 24 runs}', 1],
-     ['\\text{missed detection}', 1]].forEach(function(h){
+     ['\\text{first alarm, h}', 1],
+     ['\\text{false alarms}', 1]].forEach(function(h){
        const e = th(h[0]); if (h[1]) e.style.textAlign = 'right'; thr.appendChild(e);});
-    const AV = avgChart();
-    const delays = CHART_ORDER.map(function(w){return AV[w].delay === null ? Infinity : AV[w].delay;});
+    const sc = CHART_ORDER.map(function(w){return chartScore(w);});
+    const delays = sc.map(function(x){return x.delay === null ? Infinity : x.delay;});
     const bestD = Math.min.apply(null, delays);
-    CHART_ORDER.forEach(function(w){
-      const x = AV[w], tr = document.createElement('tr');
-      if (w === chart) tr.className = 'sel';
+    sc.forEach(function(x){
+      const tr = document.createElement('tr');
+      if (x.which === chart) tr.className = 'sel';
       const win = x.delay !== null && x.delay === bestD && bestD < Infinity;
-      tr.appendChild(th('\\text{' + CHARTNAME[w] + '}' + (win ? '\\ \\bigstar' : '')));
-      tr.appendChild(td(x.delay === null ? '\\text{never}' : x.delay.toFixed(1),
+      tr.appendChild(th('\\text{' + CHARTNAME[x.which] + '}' + (win ? '\\ \\bigstar' : '')));
+      tr.appendChild(td(x.delay === null ? '\\text{never}' : String(x.delay),
                         x.delay === null ? 'bad' : (win ? 'win' : '')));
-      tr.appendChild(td(String(x.epTot), x.epTot > 0 ? 'bad' : ''));
-      tr.appendChild(td((24 - x.fires) + '/24', x.fires < 24 ? 'bad' : ''));
+      tr.appendChild(td(String(x.ep), x.ep > 0 ? 'bad' : ''));
       tbb.appendChild(tr);});
     return;}
   const R=ranking();
@@ -1326,38 +1322,23 @@ function table(){
       ['\\text{residual SD},\\ ^\\circ\\text{C}', 1],
       ['\\text{lag-1 autocorrelation}', 1]]
     :[['\\text{Method}', 0],
-      ['\\text{control limit},\\ ^\\circ\\text{C}', 1],
       ['\\text{first alarm, h}', 1],
-      ['\\text{false alarms, 24 runs}', 1],
-      ['\\text{missed detection}', 1]];
+      ['\\text{false alarms}', 1]];
   /* the header of a number column is right-aligned like the number under it */
   cols.forEach(function(h){const e=th(h[0]);if(h[1])e.style.textAlign='right';thr.appendChild(e);});
-  const AV=(tab===T_SERVICE)?avgService():null;
-  let starK=null;
-  if(AV){let bv=-1e9;[1,2,3,4,5].forEach(function(k){const a=AV[k];
-    const v=a.delay===null?-1e9:1000-a.delay-a.epTot*0.001;
-    if(v>bv){bv=v;starK=k;}});if(AV[starK].delay===null)starK=null;}
   [1,2,3,4,5].forEach(function(k){const M=calc(k),tr=document.createElement('tr');
     if(k===model)tr.className='sel';
-    const starred=(tab===T_SERVICE)?(k===starK):(k===R.winner&&R.anyDetects);
-    tr.appendChild(th('\\text{'+MODNAME[k]+'}'+(starred?'\\ \\bigstar':'')));
+    tr.appendChild(th('\\text{'+MODNAME[k]+'}'+(k===R.winner&&R.anyDetects?'\\ \\bigstar':'')));
     if(tab===T_HIST){
-      /* what the method actually is — a number for the two flat ones, a formula for the rest.
-         Without it the first column is five names and no content. */
       tr.appendChild(td(FORMULA[k],'lft'));
-      /* method 1 fits nothing — the deck's own words: no sd, no z. Its fitting columns are a
-         dash; the 75 C line itself is on the chart (the "75°C limit" checkbox). */
       if(k===1){tr.appendChild(td('\\text{--}'));tr.appendChild(td('\\text{--}'));}
       else{
         tr.appendChild(td(M.sd.toFixed(2),k===R.winner?'win':''));
         tr.appendChild(td(M.ac1.toFixed(2)));}}
     else{
-      const a=AV[k];
-      tr.appendChild(td(M.limitC.toFixed(2),k===1?'bad':''));
-      tr.appendChild(td(a.delay===null?'\\text{never}':a.delay.toFixed(1),
-                        a.delay===null?'bad':(k===starK?'win':'')));
-      tr.appendChild(td(String(a.epTot),a.epTot>0?'bad':''));
-      tr.appendChild(td((24-a.fires)+'/24',a.fires<24?'bad':''));}
+      tr.appendChild(td(M.delay===null?'\\text{never}':String(M.delay),
+                        M.delay===null?'bad':(k===R.winner&&R.anyDetects?'win':'')));
+      tr.appendChild(td(String(M.ep),M.ep>0?'bad':''));}
     tbb.appendChild(tr);});}
 
 /* the model, written out — value or equation, in the same words the manual uses */
@@ -1380,7 +1361,7 @@ const TABS=[
     The shift here is deliberately far smaller than tab 2's: every chart notices a huge shift
     at once, so a huge shift cannot tell them apart. */
  {name:'\\text{3. Detection}',
-  goal:'\\text{Method pinned to Regression on flow. Four rules on the same }z\\text{ — read }\\text{ARL}_1\\text{, the mean wait to the first alarm.}'}];
+  goal:'\\text{Method pinned to Regression on flow. Four rules on the same }z\\text{ — which alarms first? }\\text{ARL}_1\\text{ is this wait, averaged over many runs.}'}];
 
 function paint(name,v){document.querySelectorAll('.seg[data-for="'+name+'"] button').forEach(function(b){
   const on=b.getAttribute('data-val')===String(v);
@@ -1401,7 +1382,6 @@ function syncRows(){
   /* no fault exists on the history tab — there is no button to press, not a greyed-out one */
   set('c-unit',tab===T_CHART?'hide':'live');
   set('c-fault',tab===T_HIST?'hide':'live');
-  set('c-fsize',tab===T_SERVICE?'live':'hide');
   /* the lever says what the fault DOES, in the unit it is set in and in the height it reaches,
      because "0.06" on its own means nothing to anybody */
   /* the shift-size lever of the chart tab is stated in sd, because that is the unit the charts
@@ -1411,8 +1391,8 @@ function syncRows(){
     document.getElementById('cfU'));
   /* the chart's parameters live in the readout, not on the button — three buttons carrying
      "CUSUM k 0.5, h 6" do not fit a 320px rail and the last one was being sliced off */
-  K({sh:'\\text{limit }3\\,\\text{sd}',ew:'\\lambda\\,0.2,\\ L\\,3.0',
-     cu:'k\\,0.5,\\ h\\,6'}[chart],document.getElementById('chU'));
+  K({sh:'\\text{limit }3\\,\\text{sd}',we:'\\text{zone rules }1\\text{–}3\\,\\text{sd}',
+     ew:'\\lambda\\,0.2,\\ L\\,3.0',cu:'k\\,0.5,\\ h\\,6'}[chart],document.getElementById('chU'));
   const reach=(faultKind==='drift'?FSZ.drift[fsize]*(N-FAULT):FSZ.step[fsize]);
   K(faultKind==='drift'
       ?(FSZ.drift[fsize].toFixed(2)+'\\ ^\\circ\\text{C per hour, }'+reach.toFixed(1)+
@@ -1420,30 +1400,6 @@ function syncRows(){
       :(FSZ.step[fsize].toFixed(1)+'\\ ^\\circ\\text{C at once}'),
     document.getElementById('fsU'));}
 
-/* the displayed score is the mean over the SAME 24 seeds the slides print -- one seed's
-   'false alarms 0' says nothing. The chart keeps the current seed as the worked picture. */
-function avgService(){const S0=seed,A={};
-  [1,2,3,4,5].forEach(function(k){A[k]={d:[],ep:[],la:[]};});
-  for(let s2=1;s2<=24;s2++){seed=s2;regen();
-    [1,2,3,4,5].forEach(function(k){const M=calc(k);A[k].ep.push(M.ep);
-      if(M.delay!==null){A[k].d.push(M.delay);A[k].la.push(M.latch);}});}
-  seed=S0;regen();
-  const mean=function(v){return v.length?v.reduce(function(x,y){return x+y;},0)/v.length:null;};
-  const out={};[1,2,3,4,5].forEach(function(k){
-    out[k]={delay:mean(A[k].d),
-      epTot:A[k].ep.reduce(function(x,y){return x+y;},0),fires:A[k].d.length};});
-  return out;}
-function avgChart(){const S0=seed,A={};
-  CHART_ORDER.forEach(function(w){A[w]={d:[],ep:[],la:[]};});
-  for(let s2=1;s2<=24;s2++){seed=s2;regen();
-    CHART_ORDER.forEach(function(w){const x=chartScore(w);A[w].ep.push(x.ep);
-      if(x.delay!==null){A[w].d.push(x.delay);A[w].la.push(x.latch);}});}
-  seed=S0;regen();
-  const mean=function(v){return v.length?v.reduce(function(x,y){return x+y;},0)/v.length:null;};
-  const out={};CHART_ORDER.forEach(function(w){
-    out[w]={delay:mean(A[w].d),
-      epTot:A[w].ep.reduce(function(x,y){return x+y;},0),fires:A[w].d.length};});
-  return out;}
 function refresh(){syncRows();regen();draw();table();}
 function setSeg(name,v){
   const row={machine:'c-machine',model:'c-model',fault:'c-fault',fsize:'c-fsize',
