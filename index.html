@@ -1296,8 +1296,8 @@ function table(){
        SCREEN, integers, the same story the red points tell; the run-to-run averages are
        the deck's ARL pages (RIT 2026-08-28). */
     [['\\text{Control chart}', 0],
-     ['\\text{first alarm, h}', 1],
-     ['\\text{false alarms}', 1]].forEach(function(h){
+     ['\\text{first alarm (run length), h}', 1],
+     ['\\text{false alarms (episodes)}', 1]].forEach(function(h){
        const e = th(h[0]); if (h[1]) e.style.textAlign = 'right'; thr.appendChild(e);});
     const sc = CHART_ORDER.map(function(w){return chartScore(w);});
     const delays = sc.map(function(x){return x.delay === null ? Infinity : x.delay;});
@@ -1322,8 +1322,8 @@ function table(){
       ['\\text{residual SD},\\ ^\\circ\\text{C}', 1],
       ['\\text{lag-1 autocorrelation}', 1]]
     :[['\\text{Method}', 0],
-      ['\\text{first alarm, h}', 1],
-      ['\\text{false alarms}', 1]];
+      ['\\text{first alarm (run length), h}', 1],
+      ['\\text{false alarms (episodes)}', 1]];
   /* the header of a number column is right-aligned like the number under it */
   cols.forEach(function(h){const e=th(h[0]);if(h[1])e.style.textAlign='right';thr.appendChild(e);});
   [2,3,4,5].forEach(function(k){const M=calc(k),tr=document.createElement('tr');
