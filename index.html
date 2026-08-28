@@ -1296,7 +1296,7 @@ function table(){
        SCREEN, integers, the same story the red points tell; the run-to-run averages are
        the deck's ARL pages (RIT 2026-08-28). */
     [['\\text{Control chart}', 0],
-     ['\\text{first alarm (run length), h}', 1],
+     ['\\text{detection delay, h}', 1],
      ['\\text{false alarms (episodes)}', 1]].forEach(function(h){
        const e = th(h[0]); if (h[1]) e.style.textAlign = 'right'; thr.appendChild(e);});
     const sc = CHART_ORDER.map(function(w){return chartScore(w);});
@@ -1322,7 +1322,7 @@ function table(){
       ['\\text{residual SD},\\ ^\\circ\\text{C}', 1],
       ['\\text{lag-1 autocorrelation}', 1]]
     :[['\\text{Method}', 0],
-      ['\\text{first alarm (run length), h}', 1],
+      ['\\text{detection delay, h}', 1],
       ['\\text{false alarms (episodes)}', 1]];
   /* the header of a number column is right-aligned like the number under it */
   cols.forEach(function(h){const e=th(h[0]);if(h[1])e.style.textAlign='right';thr.appendChild(e);});
@@ -1354,12 +1354,12 @@ const TABS=[
   goal:'\\text{Which method explains this machine? Walk the four machines and read }'+
        '\\textit{sd}\\text{, }\\textit{bias}\\text{, }\\textit{ac1}\\text{.}'},
  {name:'\\text{2. Monitoring}',
-  goal:'\\text{Same fit, clock running. Each method alarms on its own limit — read first alarm and false alarms.}'},
+  goal:'\\text{Same fit, clock running. Each method alarms on its own limit — read detection delay and false alarms.}'},
  /* One model, three charts — the mirror of tab 2, which was one chart and five models.
     The shift here is deliberately far smaller than tab 2's: every chart notices a huge shift
     at once, so a huge shift cannot tell them apart. */
  {name:'\\text{3. Detection}',
-  goal:'\\text{Method pinned to Regression on flow. Four rules on the same }z\\text{ — which alarms first? }\\text{ARL}_1\\text{ is this wait, averaged over many runs.}'}];
+  goal:'\\text{Method pinned to Regression on flow. Four rules on the same }z\\text{ — which detects the change first, and at what false-alarm cost?}'}];
 
 function paint(name,v){document.querySelectorAll('.seg[data-for="'+name+'"] button').forEach(function(b){
   const on=b.getAttribute('data-val')===String(v);
