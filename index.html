@@ -251,8 +251,11 @@ body.distcls .wrap{height:auto;max-height:900px}   /* เนื้อหาส�
     border:1px solid #e6e6e0;border-radius:8px;overflow:hidden}
   .pg .panel .seg[data-for="fsize"],.pg .panel .seg[data-for="cfsize"],
   .pg .panel .seg[data-for="chart"]{
-    display:grid;grid-template-columns:1fr 1fr 1fr;width:100%;min-width:0;
+    display:grid;grid-template-columns:1fr 1fr;width:100%;min-width:0;
     border:1px solid #e6e6e0;border-radius:8px;overflow:hidden}
+  .pg .panel .seg[data-for="chart"] button:nth-child(2n+1){border-left:0!important}
+  .pg .panel .seg[data-for="chart"] button:nth-child(2n){border-left:1px solid #e6e6e0!important}
+  .pg .panel .seg[data-for="chart"] button:nth-child(n+3){border-top:1px solid #e6e6e0!important}
   .pg .panel .seg[data-for="fault"] button,.pg .panel .seg[data-for="unit"] button,.pg .panel .seg[data-for="fsize"] button,
   .pg .panel .seg[data-for="cfsize"] button,.pg .panel .seg[data-for="chart"] button{
     font-size:14px;padding:6px 3px;cursor:pointer;border:0!important;text-align:center}
@@ -294,7 +297,6 @@ body.distcls .wrap{height:auto;max-height:900px}   /* เนื้อหาส�
 <div class="wrap">
   <div class="hdr">
     <h1 id="__pgt" data-tex="\text{Baseline methods for anomaly detection}">Baseline methods for anomaly detection</h1>
-    <a href="PDM_BASELINE_LAB_MANUAL.html" target="_blank" style="align-self:center;font-size:13.5px;color:#185fa5;text-decoration:none;border:1px solid #cfd4dc;border-radius:999px;padding:4px 12px;white-space:nowrap">คู่มือ + ตารางบันทึกผล</a>
     <div class="tabs" id="tabs"></div>
   </div>
   <div class="goal" id="hint"></div>
@@ -328,6 +330,7 @@ body.distcls .wrap{height:auto;max-height:900px}   /* เนื้อหาส�
         <span class="dlab" style="flex:0 0 auto;color:#475569;font-size:15px;font-weight:600">\(\text{Control chart}\)</span><span style="color:#6b7280;font-size:13px" id="chU"></span>
         <div class="seg" data-for="chart">
           <button type="button" data-val="sh">\(\text{Shewhart}\)</button>
+          <button type="button" data-val="we">\(\text{W. Electric}\)</button>
           <button type="button" data-val="ew">\(\text{EWMA}\)</button>
           <button type="button" data-val="cu">\(\text{CUSUM}\)</button>
         </div>
@@ -815,9 +818,13 @@ if (typeof document !== 'undefined') (function () {
      tab 2  hours 0-1440    the same fit, clock running on: 720-1200 still healthy, 1200-1440 faulty
    The stretch tab 1 shows is not merely like tab 2's training window, it is the same hours, so a
    number written down on tab 1 is the same number tab 2 uses. */
-const C={flow:'#8C7BB9',flowTx:'#5E4C8C',act:'#E07A5F',actTx:'#B0503A',exp:'#5B8FB9',expTx:'#3F6E99',
-         res:'#6BA38C',resTx:'#3F7D63',lim:'#B0503A',
-         histBg:'rgba(91,143,185,0.09)',cleanBg:'rgba(107,163,140,0.09)',faultBg:'rgba(176,122,174,0.14)',
+/* one colour per ROLE (RIT 2026-08-28): navy = any data series, red dashed = any limit,
+   amber = the first-alarm line, grey dashed = the expected reference */
+const C={flow:'#33618D',act:'#33618D',res:'#33618D',
+         exp:'#3F9B77',expTx:'#3F6E99',
+         lim:'#B0503A',fixed:'#B0503A',
+         alarm:'#C07E00',alarmBar:'#B0503A',alarmBg:'rgba(0,0,0,0)',
+         histBg:'rgba(0,0,0,0)',cleanBg:'rgba(0,0,0,0)',faultBg:'rgba(0,0,0,0)',
          faultTx:'#7E5A93',cleanTx:'#3F7D63',ax:'#94a3b8',axtx:'#64748b',zero:'#9aa3b2'};
 function K(t,el,d){if(!el)return;if(window.katex){try{katex.render(String(t),el,{throwOnError:false,displayMode:!!d});return;}catch(e){}}el.textContent=t;}
 
@@ -836,14 +843,15 @@ const MACH=[{id:'load',lab:'Swinging load'},{id:'steady',lab:'Steady load'},
 const MODNAME={1:'1 Fixed limit 75',2:'2 Mean baseline',3:'3 Moving average 6 h',
                4:'4 AR(1) prev hour',5:'5 Regression on flow'};
 /* the control charts, same rule */
-const CHARTNAME={sh:'Shewhart 3 sd',ew:'EWMA λ 0.2',cu:'CUSUM k 0.5, h 6'};
+const CHARTNAME={sh:'Shewhart 3 sd',we:'Western Electric',ew:'EWMA λ 0.2',cu:'CUSUM k 0.5, h 6'};
 /* Tuned so all three raise false alarms at the SAME rate — otherwise "catches it sooner" means
    nothing, you can always catch things sooner by shouting more. Measured over 200 runs of 1200
    clean hours each: Shewhart 741 h between false alarms, EWMA 819, CUSUM 716. Shewhart's 741 is
    the textbook one-sided 3-sigma figure (1/0.00135 = 741), which is a useful check that the
    simulation is behaving. */
-const CHART={sh:{arl0:741},ew:{lam:0.2,L:3.0,arl0:819},cu:{k:0.5,h:6.0,arl0:716}};
-const CHART_ORDER=['sh','ew','cu'];
+/* we.arl0 from arl_mc_s3.py (two-sided zone tests): WE alarms far more often by design */
+const CHART={sh:{arl0:741},we:{arl0:91},ew:{lam:0.2,L:3.0,arl0:819},cu:{k:0.5,h:6.0,arl0:716}};
+const CHART_ORDER=['sh','we','ew','cu'];
 /* tab 3 needs a much smaller fault than tab 2. Tab 2 argues with a 75 C limit, which the machine
    has to actually reach; tab 3 asks which chart notices a shift first, and every chart notices a
    huge shift immediately. These are in multiples of the residual's own sd. */
@@ -1014,7 +1022,7 @@ function calc(k){
    single hour to make obvious still piles up on CUSUM and never does on Shewhart. */
 function chartStat(z,which){
   const out=new Array(N).fill(null);
-  if(which==='sh'){for(let i=0;i<N;i++)out[i]=z[i];return{stat:out,limit:LIMZ};}
+  if(which==='sh'||which==='we'){for(let i=0;i<N;i++)out[i]=z[i];return{stat:out,limit:LIMZ};}
   if(which==='ew'){const lam=CHART.ew.lam;let a=0;
     for(let i=0;i<N;i++){if(ok(z[i]))a=lam*z[i]+(1-lam)*a;out[i]=a;}
     return{stat:out,limit:CHART.ew.L*Math.sqrt(lam/(2-lam))};}
@@ -1025,7 +1033,16 @@ function chartStat(z,which){
 function chartScore(which){
   const M=calc(5),S=chartStat(M.z,which);
   const exc=new Array(N).fill(false);
-  for(let i=HIST;i<N;i++)if(ok(S.stat[i]))exc[i]=S.stat[i]>=S.limit;
+  if(which==='we'){const zz=M.z;
+    for(let i=HIST;i<N;i++){if(!ok(zz[i]))continue;
+      let fr=Math.abs(zz[i])>3;
+      if(!fr&&i>=2){let pp=0,nn=0;for(let q=0;q<3;q++){if(zz[i-q]>2)pp++;if(zz[i-q]<-2)nn++;}
+        fr=pp>=2||nn>=2;}
+      if(!fr&&i>=4){let pp=0,nn=0;for(let q=0;q<5;q++){if(zz[i-q]>1)pp++;if(zz[i-q]<-1)nn++;}
+        fr=pp>=4||nn>=4;}
+      if(!fr&&i>=7){let pp=0;for(let q=0;q<8;q++)if(zz[i-q]>0)pp++;fr=pp===8||pp===0;}
+      exc[i]=fr;}}
+  else for(let i=HIST;i<N;i++)if(ok(S.stat[i]))exc[i]=S.stat[i]>=S.limit;
   const alarmed=function(i){for(let q=0;q<persist;q++){const j=i-q;
     if(j<HIST||!exc[j])return false;}return true;};
   let TP=0,FP=0,first=null,ep=0,prevFA=false;
@@ -1038,7 +1055,9 @@ function chartScore(which){
   if(first!==null){let onN=0,tot=0;
     for(let i=first;i<N;i++){if(!ok(S.stat[i]))continue;tot++;if(alarmed(i))onN++;}
     latch=tot?Math.max(1,Math.round(100*onN/tot)):null;}   /* >=1: it DID alarm */
-  return{which:which,stat:S.stat,limit:S.limit,TP:TP,FP:FP,
+  const alarmArr=new Array(N).fill(false);
+  for(let i=HIST;i<N;i++)if(ok(S.stat[i]))alarmArr[i]=alarmed(i);
+  return{which:which,alarmArr:alarmArr,stat:S.stat,limit:S.limit,TP:TP,FP:FP,
     FN:FAULT_HOURS-TP,TN:CLEAN_TEST-FP,prec:prec,rec:rec,
     f1:(prec!==null&&(prec+rec))?2*prec*rec/(prec+rec):0,first:first,
     delay:first===null?null:first-FAULT,ep:ep,latch:latch,arl0:CHART[which].arl0};}
@@ -1198,7 +1217,6 @@ function draw(){
   const A3=axes(c,b3,i0,i1-1,sr[0],sr[1],true,onChart?(CHARTNAME[chart]+' statistic'):(inZ?'residual ÷ SD  (z)':'residual, °C'));
   marks(b3,A3.PX);
   const ly=Math.max(b3.t,Math.min(b3.b,A3.PY(lim3)));
-  c.fillStyle=C.alarmBg;c.fillRect(b3.l,b3.t,b3.r-b3.l,ly-b3.t);
   c.save();c.beginPath();c.rect(b3.l,b3.t,b3.r-b3.l,b3.b-b3.t);c.clip();
   hline(c,b3,A3.PY,0,C.zero,[4,4],1);
   poly(c,A3.PX,A3.PY,series,i0,i1,C.res,1.5);
@@ -1210,8 +1228,24 @@ function draw(){
      sits in the key row like every other label, never on top of the data (RIT 2026-08-28) */
   let fAl=null;
   if(inService&&!onChart&&M.first!=null)fAl=M.first;
-  else if(onChart){for(let i=Math.max(i0,FAULT);i<i1;i++){
-    if(series[i]!=null&&isFinite(series[i])&&series[i]>=lim3){fAl=i;break;}}}
+  else if(onChart){const _cs=chartScore(chart);if(_cs.first!==null)fAl=_cs.first;}
+  /* the hours where the alarm is ON, painted on the data itself (RIT 2026-08-28) */
+  if(tab!==T_HIST){
+    let almArr=null;
+    if(onChart){almArr=chartScore(chart).alarmArr;}
+    else{const exc2=new Array(N).fill(false);
+      for(let i=HIST;i<N;i++)if(ok(M.z[i]))exc2[i]=M.z[i]>=M.limitZ;
+      almArr=new Array(N).fill(false);
+      for(let i=HIST;i<N;i++){let on=true;
+        for(let q=0;q<persist;q++){const j=i-q;if(j<HIST||!exc2[j]){on=false;break;}}
+        almArr[i]=on;}}
+    if(almArr){c.save();c.beginPath();c.rect(b3.l,b3.t,b3.r-b3.l,b3.b-b3.t);c.clip();
+      c.fillStyle=C.alarmBar;
+      for(let i=Math.max(i0,HIST);i<i1;i++){
+        if(!almArr[i]||series[i]==null||!isFinite(series[i]))continue;
+        const yy=Math.max(b3.t,Math.min(b3.b,A3.PY(series[i])));
+        c.beginPath();c.arc(A3.PX(i),yy,2.4,0,6.284);c.fill();}
+      c.restore();}}
   if(fAl!==null){const xx=A3.PX(fAl);
     c.strokeStyle=C.lim;c.lineWidth=1.5;c.setLineDash([3,3]);
     c.beginPath();c.moveTo(xx,b3.t);c.lineTo(xx,b3.b);c.stroke();c.setLineDash([]);}
@@ -1232,15 +1266,15 @@ function draw(){
   keys(c,L,lab2,[{col:C.act,txt:'temp, °C'}].concat(
     model===1?[]:[{col:C.exp,dash:true,txt:'expected'}]).concat(
     [{col:C.fixed,dash:true,txt:'75 °C limit'}]));
-  const kFA=fAl===null?[]:[{col:C.lim,dash:true,txt:'first alarm +'+(fAl-FAULT)+' h'}];
+  const kFA=fAl===null?[]:[{col:C.alarm,dash:true,txt:'first alarm +'+(fAl-FAULT)+' h'}];
   keys(c,L,lab3,(onChart
     ?[{col:C.res,txt:CHARTNAME[chart]+' statistic'},
       {col:C.lim,dash:true,txt:'control limit '+lim3.toFixed(2)},
-      {col:C.alarmBar,txt:'alarm zone'}]
+      {col:C.alarmBar,txt:'alarm hours'}]
     :[{col:C.res,txt:inZ?'residual ÷ SD':'residual, °C'},
       {col:C.lim,dash:true,txt:'control limit '+(inZ?M.limitZ.toFixed(2):
         (M.limitC.toFixed(2)+' °C'))},
-      {col:C.alarmBar,txt:'alarm zone'}]).concat(kFA));
+      {col:C.alarmBar,txt:'alarm hours'}]).concat(kFA));
 
   const narrow=window.matchMedia('(max-width:820px)').matches,
         wrap=document.querySelector('.wrap'),pnl=document.querySelector('.panel');
@@ -1342,7 +1376,7 @@ const TABS=[
     The shift here is deliberately far smaller than tab 2's: every chart notices a huge shift
     at once, so a huge shift cannot tell them apart. */
  {name:'\\text{3. Detection}',
-  goal:'\\text{Method pinned to Regression on flow. Three rules, same false-alarm rate — read }\\text{ARL}_1\\text{, the mean wait to the first alarm.}'}];
+  goal:'\\text{Method pinned to Regression on flow. Four rules on the same }z\\text{ — read }\\text{ARL}_1\\text{, the mean wait to the first alarm.}'}];
 
 function paint(name,v){document.querySelectorAll('.seg[data-for="'+name+'"] button').forEach(function(b){
   const on=b.getAttribute('data-val')===String(v);
