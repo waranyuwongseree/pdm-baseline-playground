@@ -273,7 +273,7 @@ body.distcls .wrap{height:auto;max-height:900px}   /* เนื้อหาส�
   /* หัวคอลัมน์เขียนเป็นคำเต็มแล้ว ต้องยอมให้ตัดบรรทัด ไม่งั้นตารางกว้างเกินจอ */
   .pg .mtab th{white-space:normal;line-height:1.25;vertical-align:bottom}
   .pg .mtab thead .katex{white-space:normal}
-  .pg .mtab td.win{color:#3F7D63}
+  .pg .mtab td.win,.pg .mtab th.win{color:#1E7A56;font-weight:600}
   .pg .mtab td.bad{color:#B0503A}
   .pg .mtab td.lft{text-align:left;font-weight:400;color:#475569}
   .pg .mtab tr.sel th,.pg .mtab tr.sel td{background:#f4f7fb}
@@ -1247,7 +1247,8 @@ function draw(){
         c.beginPath();c.arc(A3.PX(i),yy,2.4,0,6.284);c.fill();}
       c.restore();}}
   if(fAl!==null){const xx=A3.PX(fAl);
-    c.strokeStyle=C.lim;c.lineWidth=1.5;c.setLineDash([3,3]);
+    /* the SAME constant the legend swatch uses -- they can no longer drift apart */
+    c.strokeStyle=C.alarm;c.lineWidth=1.8;c.setLineDash([3,3]);
     c.beginPath();c.moveTo(xx,b3.t);c.lineTo(xx,b3.b);c.stroke();c.setLineDash([]);}
 
   /* ---- the strips ---- */
@@ -1301,11 +1302,12 @@ function table(){
     const sc = CHART_ORDER.map(function(w){return chartScore(w);});
     const delays = sc.map(function(x){return x.delay === null ? Infinity : x.delay;});
     const bestD = Math.min.apply(null, delays);
+    /* a near-tie is a tie: everything within 1 h of the best goes green together */
     sc.forEach(function(x){
       const tr = document.createElement('tr');
       if (x.which === chart) tr.className = 'sel';
-      const win = x.delay !== null && x.delay === bestD && bestD < Infinity;
-      tr.appendChild(th('\\text{' + CHARTNAME[x.which] + '}' + (win ? '\\ \\bigstar' : '')));
+      const win = x.delay !== null && bestD < Infinity && x.delay <= bestD + 1;
+      tr.appendChild(th('\\text{' + CHARTNAME[x.which] + '}', win ? 'win' : ''));
       tr.appendChild(td(x.delay === null ? '\\text{never}' : String(x.delay),
                         x.delay === null ? 'bad' : (win ? 'win' : '')));
       tr.appendChild(td(x.prec === null ? '\\text{--}' : String(Math.round(100 * x.prec))));
@@ -1329,16 +1331,27 @@ function table(){
   /* the header of a number column is right-aligned like the number under it */
   cols.forEach(function(h){const e=th(h[0]);if(h[1])e.style.textAlign='right';thr.appendChild(e);});
   const T7=(tab===T_SERVICE)?t75():null;
-  [2,3,4,5].forEach(function(k){const M=calc(k),tr=document.createElement('tr');
+  /* a near-tie is a tie: sd within 0.01 C of the best (Baseline), or a first alarm within
+     1 h of the best (Monitoring), all go green together (RIT 2026-08-28) */
+  const CAND={};[2,3,4,5].forEach(function(k){CAND[k]=calc(k);});
+  const WINSET={};
+  if(tab===T_HIST){
+    let best=Infinity;[2,3,4,5].forEach(function(k){if(CAND[k].sd<best)best=CAND[k].sd;});
+    [2,3,4,5].forEach(function(k){WINSET[k]=CAND[k].sd<=best+0.01;});}
+  else{
+    let best=Infinity;[2,3,4,5].forEach(function(k){
+      if(CAND[k].delay!==null&&CAND[k].delay<best)best=CAND[k].delay;});
+    [2,3,4,5].forEach(function(k){WINSET[k]=CAND[k].delay!==null&&isFinite(best)&&CAND[k].delay<=best+1;});}
+  [2,3,4,5].forEach(function(k){const M=CAND[k],tr=document.createElement('tr');
     if(k===model)tr.className='sel';
-    tr.appendChild(th('\\text{'+MODNAME[k]+'}'+(k===R.winner&&R.anyDetects?'\\ \\bigstar':'')));
+    tr.appendChild(th('\\text{'+MODNAME[k]+'}',WINSET[k]?'win':''));
     if(tab===T_HIST){
       tr.appendChild(td(FORMULA[k],'lft'));
-      tr.appendChild(td(M.sd.toFixed(2),k===R.winner?'win':''));
+      tr.appendChild(td(M.sd.toFixed(2),WINSET[k]?'win':''));
       tr.appendChild(td(M.ac1.toFixed(2)));}
     else{
       tr.appendChild(td(M.delay===null?'\\text{never}':String(M.delay),
-                        M.delay===null?'bad':(k===R.winner&&R.anyDetects?'win':'')));
+                        M.delay===null?'bad':(WINSET[k]?'win':'')));
       const ld=(T7===null||M.first===null)?null:T7-M.first;
       tr.appendChild(td(ld===null?'\\text{--}':String(ld),ld!==null&&ld>0?'win':''));
       tr.appendChild(td(M.prec===null?'\\text{--}':String(Math.round(100*M.prec))));
