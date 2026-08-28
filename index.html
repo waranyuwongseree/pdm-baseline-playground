@@ -334,13 +334,6 @@ body.distcls .wrap{height:auto;max-height:900px}   /* เนื้อหาส�
           <button type="button" data-val="cu">\(\text{CUSUM}\)</button>
         </div>
       </div>
-      <div class="drow" id="c-unit">
-        <span class="dlab" style="flex:0 0 auto;color:#475569;font-size:15px;font-weight:600">\(\text{Residual axis}\)</span>
-        <div class="seg" data-for="unit">
-          <button type="button" data-val="z">\(z\text{-score}\)</button>
-          <button type="button" data-val="c">\(^\circ\text{C}\)</button>
-        </div>
-      </div>
       <div class="drow" id="c-fault">
         <span class="dlab" style="flex:0 0 auto;color:#475569;font-size:15px;font-weight:600">\(\text{Fault}\)</span>
         <div class="seg" data-for="fault">
@@ -1146,7 +1139,9 @@ function draw(){
   const inService=(tab!==T_HIST);
   /* the scored tabs start the clock at the test onset -- history lives on tab 1 */
   const i0=inService?HIST:0,i1=inService?N:HIST;
-  const L=56,Rr=W-12,T=4,STRIP=17,XAX=30,GAP=9;
+  /* Rr is shared by all three panels: the right-hand °C ruler eats the same margin
+     everywhere, so the hours line up vertically by construction (RIT 2026-08-28) */
+  const L=56,Rr=W-46,T=4,STRIP=17,XAX=30,GAP=9;
   /* the flow panel can be switched off; when it is, its height goes to the other two */
   const showFlow=SHOW.flow;
   const nStrip=showFlow?4:3,nGap=showFlow?2:1;
@@ -1196,7 +1191,7 @@ function draw(){
      window for every model and the reader compares lines, not rulers. Degrees is the same data
      on the physical scale, one click away. On the chart tab neither applies: what is plotted is
      the chart's own statistic against the chart's own limit. */
-  const inZ=(unit==='z'&&!onChart);
+  const inZ=!onChart;
   const series=onChart?CS.stat:(inZ?M.z:M.res);
   const lim3=onChart?CS.limit:(inZ?M.limitZ:M.limitC0);
   let sr;
@@ -1222,6 +1217,14 @@ function draw(){
      c.strokeStyle=C.lim;c.lineWidth=1.5;c.setLineDash([7,4]);
      c.beginPath();c.moveTo(b3.l,ly2);c.lineTo(b3.r,ly2);c.stroke();c.setLineDash([]);}}
   edgeMarks(c,b3,A3.PX,series,i0,i1,sr[0],sr[1],C.res);
+  /* the same line read in degrees: residual = z × sd, so the right-hand ruler is the
+     z ruler rescaled by the model's own sd (RIT 2026-08-28) */
+  if(!onChart&&M.sd>0){
+    c.fillStyle=C.axtx;c.font='12px KaTeX_Main';c.textAlign='left';c.textBaseline='middle';
+    niceTicks(sr[0]*M.sd,sr[1]*M.sd).forEach(function(v){
+      const yy=A3.PY(v/M.sd);
+      if(yy>=b3.t-1&&yy<=b3.b+1)c.fillText(nice(v),b3.r+5,yy);});
+    c.textBaseline='bottom';c.fillText('°C',b3.r+5,b3.t-2);}
   /* WHEN it first alarmed -- the dashed line marks the hour in the plot, and the wording
      sits in the key row like every other label, never on top of the data (RIT 2026-08-28) */
   let fAl=null;
@@ -1385,7 +1388,6 @@ function syncRows(){
   document.getElementById('resetBtn').style.display='';
   set('c-chart',tab===T_CHART?'live':'hide');
   /* no fault exists on the history tab — there is no button to press, not a greyed-out one */
-  set('c-unit',tab===T_CHART?'hide':'live');
   set('c-fault',tab===T_SERVICE?'live':'hide');
   /* the lever says what the fault DOES, in the unit it is set in and in the height it reaches,
      because "0.06" on its own means nothing to anybody */
