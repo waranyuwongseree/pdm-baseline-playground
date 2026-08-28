@@ -403,7 +403,6 @@ function classDecode(e){const D='0123456789abcdefghijklmnopqrstuvwxyz';const o=[
       </div>
       <div class="row" id="rowRun">
         <button class="primary" id="resetBtn">\(\text{New data}\)</button>
-        <button id="copyBtn" title="คัดลอกตารางผลเป็น TSV ไปวางในตารางบันทึกของคู่มือ">\(\text{Copy results}\)</button>
       </div>
     </div>
     </div>
@@ -1445,17 +1444,6 @@ function applyTab(i){tab=i;
   document.querySelectorAll('.seg[data-for="'+nm+'"] button').forEach(function(b){
     b.addEventListener('click',function(){setSeg(nm,b.getAttribute('data-val'));});});});
 document.getElementById('resetBtn').addEventListener('click',function(){seed++;refresh();});
-/* one press -> the current score table as TSV on the clipboard, ready to paste into the
-   record sheet in PDM_BASELINE_LAB_MANUAL.html (RIT 2026-08-28) */
-document.getElementById('copyBtn').addEventListener('click',function(){
-  const rows=[...document.querySelectorAll('#tbl tr')].map(function(tr){
-    return [...tr.children].map(function(c){return c.textContent.trim();}).join('\t');});
-  const tsv=rows.join('\n');
-  (navigator.clipboard?navigator.clipboard.writeText(tsv):Promise.reject())
-    .catch(function(){const ta=document.createElement('textarea');ta.value=tsv;
-      document.body.appendChild(ta);ta.select();document.execCommand('copy');ta.remove();});
-  const b=document.getElementById('copyBtn');const old=b.innerHTML;
-  b.textContent='คัดลอกแล้ว ✓';setTimeout(function(){b.innerHTML=old;},900);});
 window.addEventListener('resize',function(){draw();});
 
 const tb=document.getElementById('tabs');
