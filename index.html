@@ -1301,6 +1301,7 @@ function table(){
        SCREEN, integers, the same story the red points tell; the run-to-run averages are
        the deck's ARL pages (RIT 2026-08-28). */
     [['\\text{Detection rule}', 0],
+     ['\\text{memory, h}', 1],
      ['\\text{detection delay, h}', 1],
      ['\\text{precision, \\%}', 1],
      ['\\text{recall, \\%}', 1]].forEach(function(h){
@@ -1314,6 +1315,8 @@ function table(){
       if (x.which === chart) tr.className = 'sel';
       const win = x.delay !== null && bestD < Infinity && x.delay <= bestD + 1;
       tr.appendChild(th('\\text{' + CHARTNAME[x.which] + '}', win ? 'win' : ''));
+      /* how far back the rule looks -- the property that explains the delay beside it */
+      tr.appendChild(td({sh:'1',we:'8',ew:'\\approx 9',cu:'\\text{all}'}[x.which]));
       tr.appendChild(td(x.delay === null ? '\\text{never}' : String(x.delay),
                         x.delay === null ? 'bad' : (win ? 'win' : '')));
       tr.appendChild(td(x.prec === null ? '\\text{--}' : String(Math.round(100 * x.prec))));
