@@ -1058,6 +1058,9 @@ function chartScore(which){
     delay:first===null?null:first-FAULT,ep:ep,latch:latch,arl0:CHART[which].arl0};}
 
 /* the fixed 75 C threshold is a reference line, not a contestant (RIT 2026-08-28) */
+/* the hour temp first reaches the fixed 75 C criterion after the fault starts --
+   lead time = that hour minus the model's first alarm (P-F head start, RIT 2026-08-28) */
+function t75(){for(let i=FAULT;i<N;i++){if(ok(temp[i])&&temp[i]>=75)return i;}return null;}
 function ranking(){const rows=[2,3,4,5].map(function(k){return{k:k,v:calc(k).metric};});
   rows.sort(function(a,b){return tab===T_HIST?a.v-b.v:b.v-a.v;});
   const lead=rows[1].v?Math.abs((rows[1].v-rows[0].v)/rows[1].v)*100:(rows[0].v?Infinity:0);
@@ -1323,9 +1326,11 @@ function table(){
       ['\\text{lag-1 autocorrelation}', 1]]
     :[['\\text{Method}', 0],
       ['\\text{detection delay, h}', 1],
-      ['\\text{false alarms (episodes)}', 1]];
+      ['\\text{false alarms (episodes)}', 1],
+      ['\\text{lead vs 75 °C, h}', 1]];
   /* the header of a number column is right-aligned like the number under it */
   cols.forEach(function(h){const e=th(h[0]);if(h[1])e.style.textAlign='right';thr.appendChild(e);});
+  const T7=(tab===T_SERVICE)?t75():null;
   [2,3,4,5].forEach(function(k){const M=calc(k),tr=document.createElement('tr');
     if(k===model)tr.className='sel';
     tr.appendChild(th('\\text{'+MODNAME[k]+'}'+(k===R.winner&&R.anyDetects?'\\ \\bigstar':'')));
@@ -1336,7 +1341,9 @@ function table(){
     else{
       tr.appendChild(td(M.delay===null?'\\text{never}':String(M.delay),
                         M.delay===null?'bad':(k===R.winner&&R.anyDetects?'win':'')));
-      tr.appendChild(td(String(M.ep),M.ep>0?'bad':''));}
+      tr.appendChild(td(String(M.ep),M.ep>0?'bad':''));
+      const ld=(T7===null||M.first===null)?null:T7-M.first;
+      tr.appendChild(td(ld===null?'\\text{--}':String(ld),ld!==null&&ld>0?'win':''));}
     tbb.appendChild(tr);});}
 
 /* the model, written out — value or equation, in the same words the manual uses */
@@ -1439,6 +1446,8 @@ window.LAB={
       hist:HIST,cleanTest:CLEAN_TEST,faultHours:FAULT_HOURS,
       winner:R.winner,winnerName:MODNAME[R.winner],anyDetects:R.anyDetects,
       lead:+((isFinite(R.lead)?R.lead:9999).toFixed(2)),all:{}};
+    const T7=(tab===T_SERVICE)?t75():null;
+    o.t75=T7;
     [1,2,3,4,5].forEach(function(k){const A=calc(k);
       o.all[k]=tab===T_HIST
         ?{sd:+A.sd.toFixed(4),bias:+A.bias.toFixed(4),ac1:+A.ac1.toFixed(4),
@@ -1447,7 +1456,8 @@ window.LAB={
           limitC:+A.limitC.toFixed(4),limitZ:A.limitZ,
           prec:A.prec===null?null:+A.prec.toFixed(4),rec:+A.rec.toFixed(4),
           f1:+A.f1.toFixed(4),first:A.first,
-          delay:A.delay,ep:A.ep,latch:A.latch};});
+          delay:A.delay,ep:A.ep,latch:A.latch,
+          t75lead:(T7===null||A.first===null)?null:T7-A.first};});
     o.panelRange={flow:lastRange.flow?lastRange.flow.map(function(v){return +v.toFixed(6);}):null,
                   temp:lastRange.temp?lastRange.temp.map(function(v){return +v.toFixed(6);}):null};
     o.sd=+M.sd.toFixed(4);o.bias=+M.bias.toFixed(4);o.ac1=+M.ac1.toFixed(4);
