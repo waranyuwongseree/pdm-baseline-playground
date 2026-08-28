@@ -299,7 +299,6 @@ body.distcls .wrap{height:auto;max-height:900px}   /* เนื้อหาส�
     <h1 id="__pgt" data-tex="\text{Baseline methods for anomaly detection}">Baseline methods for anomaly detection</h1>
     <div class="tabs" id="tabs"></div>
   </div>
-  <div class="goal" id="hint"></div>
   <div class="layout">
     <div class="stage">
       <div class="canvasbox" id="boxM"><canvas id="mC"></canvas></div>
@@ -1415,7 +1414,6 @@ function setSeg(name,v){
 function applyTab(i){tab=i;
   if(i===T_CHART){model=5;paint('model',5);faultKind='step';cfsize=1;}   /* the rules race on a small 1-sd step -- the shift 75 C never sees */
   document.querySelectorAll('.tabbtn').forEach(function(b,j){b.className='tabbtn'+(j===i?' on':'');});
-  K(TABS[i].goal,document.getElementById('hint'),false);
   refresh();}
 
 ['machine','model','fault','fsize','chart','cfsize','unit','persist'].forEach(function(nm){
