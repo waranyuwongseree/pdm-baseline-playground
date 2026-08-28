@@ -829,7 +829,7 @@ const CHART_ORDER=['sh','we','ew','cu'];
 /* tab 3 needs a much smaller fault than tab 2. Tab 2 argues with a 75 C limit, which the machine
    has to actually reach; tab 3 asks which chart notices a shift first, and every chart notices a
    huge shift immediately. These are in multiples of the residual's own sd. */
-const CFSZ={step:[0.5,1.5,3.0],drift:[1.0,2.0,4.0]};   /* Large is 3 sd on purpose: that is where even a single-point Shewhart rule starts working,
+const CFSZ={step:[0.5,1.0,3.0],drift:[1.0,2.0,4.0]};   /* Large is 3 sd on purpose: that is where even a single-point Shewhart rule starts working,
       so the reader sees that the memory charts earn their keep on SMALL shifts and not on big
       ones. Medium at 1.5 sd is the case where they win by a mile. */
 /* Calibrated against the real pump-02 file the workflow reads: fitting flow there leaves a
@@ -1296,11 +1296,9 @@ function table(){
        the deck's ARL pages (RIT 2026-08-28). */
     [['\\text{Detection rule}', 0],
      ['\\text{detection delay, h}', 1],
-     ['\\text{lead vs 75 °C, h}', 1],
      ['\\text{precision, \\%}', 1],
      ['\\text{recall, \\%}', 1]].forEach(function(h){
        const e = th(h[0]); if (h[1]) e.style.textAlign = 'right'; thr.appendChild(e);});
-    const TC7=t75();
     const sc = CHART_ORDER.map(function(w){return chartScore(w);});
     const delays = sc.map(function(x){return x.delay === null ? Infinity : x.delay;});
     const bestD = Math.min.apply(null, delays);
@@ -1311,8 +1309,6 @@ function table(){
       tr.appendChild(th('\\text{' + CHARTNAME[x.which] + '}' + (win ? '\\ \\bigstar' : '')));
       tr.appendChild(td(x.delay === null ? '\\text{never}' : String(x.delay),
                         x.delay === null ? 'bad' : (win ? 'win' : '')));
-      const xld=(TC7===null||x.first===null)?null:TC7-x.first;
-      tr.appendChild(td(xld===null?'\\text{--}':String(xld),xld!==null&&xld>0?'win':''));
       tr.appendChild(td(x.prec === null ? '\\text{--}' : String(Math.round(100 * x.prec))));
       tr.appendChild(td(String(Math.round(100 * x.rec))));
       tbb.appendChild(tr);});
@@ -1370,7 +1366,7 @@ const TABS=[
     The shift here is deliberately far smaller than tab 2's: every chart notices a huge shift
     at once, so a huge shift cannot tell them apart. */
  {name:'\\text{3. Detection}',
-  goal:'\\text{Method pinned to Regression on flow. Four rules on the same }z\\text{ — which detects the change first, and at what false-alarm cost?}'}];
+  goal:'\\text{Method pinned to Regression on flow. A small }1\\,\\text{sd shift the }75\\,^\\circ\\text{C criterion never sees — which rule catches it, at what false-alarm cost?}'}];
 
 function paint(name,v){document.querySelectorAll('.seg[data-for="'+name+'"] button').forEach(function(b){
   const on=b.getAttribute('data-val')===String(v);
@@ -1417,7 +1413,7 @@ function setSeg(name,v){
   else if(name==='persist')persist=+v;
   paint(name,v);refresh();}
 function applyTab(i){tab=i;
-  if(i===T_CHART){model=5;paint('model',5);faultKind='drift';}   /* charts race on the machine's own drift */
+  if(i===T_CHART){model=5;paint('model',5);faultKind='step';cfsize=1;}   /* the rules race on a small 1-sd step -- the shift 75 C never sees */
   document.querySelectorAll('.tabbtn').forEach(function(b,j){b.className='tabbtn'+(j===i?' on':'');});
   K(TABS[i].goal,document.getElementById('hint'),false);
   refresh();}
