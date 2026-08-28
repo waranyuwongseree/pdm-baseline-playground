@@ -1213,6 +1213,20 @@ function draw(){
   c.strokeStyle=C.lim;c.lineWidth=1.5;c.setLineDash([7,4]);
   c.beginPath();c.moveTo(b3.l,ly);c.lineTo(b3.r,ly);c.stroke();c.setLineDash([]);
   edgeMarks(c,b3,A3.PX,series,i0,i1,sr[0],sr[1],C.res);
+  /* WHEN it first alarmed, on the chart itself -- fast vs slow must be visible, not
+     inferred from a squint at the crossing (RIT 2026-08-28) */
+  {let fAl=null;
+   if(inService&&!onChart&&M.first!=null)fAl=M.first;
+   else if(onChart){for(let i=Math.max(i0,FAULT);i<i1;i++){
+     if(series[i]!=null&&isFinite(series[i])&&series[i]>=lim3){fAl=i;break;}}}
+   if(fAl!==null){const xx=A3.PX(fAl);
+     c.strokeStyle=C.lim;c.lineWidth=1.5;c.setLineDash([3,3]);
+     c.beginPath();c.moveTo(xx,b3.t);c.lineTo(xx,b3.b);c.stroke();c.setLineDash([]);
+     const txt='first alarm +'+(fAl-FAULT)+' h';
+     c.font='600 12px system-ui,sans-serif';
+     const tw=c.measureText(txt).width,left=xx+6+tw>b3.r;
+     c.fillStyle=C.lim;
+     c.fillText(txt,left?xx-6-tw:xx+6,b3.t+14);}}
 
   /* ---- the strips ---- */
   regionStrip(c,A1.PX,regionY,inService
@@ -1260,9 +1274,9 @@ function table(){
        because anything notices sooner if you let it shout more often. */
     /* the three time-based readings (2026-08-28): first alarm as hours after the fault,
        false alarms as EPISODES, and latched-vs-flickering after the first alarm */
-    [['\\text{Control chart}', 0], ['\\text{ARL}_0,\\ \\text{h}', 1],
+    [['\\text{Control chart}', 0],
      ['\\text{first alarm, h}', 1],
-     ['\\text{false alarms, times}', 1],
+     ['\\text{false alarms}', 1],
      ['\\text{latched, \\%}', 1]].forEach(function(h){
        const e = th(h[0]); if (h[1]) e.style.textAlign = 'right'; thr.appendChild(e);});
     const sc = CHART_ORDER.map(function(w){return chartScore(w);});
@@ -1273,7 +1287,6 @@ function table(){
       if (x.which === chart) tr.className = 'sel';
       const win = x.delay !== null && x.delay === bestD && bestD < Infinity;
       tr.appendChild(th('\\text{' + CHARTNAME[x.which] + '}' + (win ? '\\ \\bigstar' : '')));
-      tr.appendChild(td(String(x.arl0)));
       tr.appendChild(td(x.delay === null ? '\\text{never}' : String(x.delay),
                         x.delay === null ? 'bad' : (win ? 'win' : '')));
       tr.appendChild(td(String(x.ep), x.ep > 0 ? 'bad' : ''));
@@ -1293,7 +1306,7 @@ function table(){
     :[['\\text{Method}', 0],
       ['\\text{control limit},\\ ^\\circ\\text{C}', 1],
       ['\\text{first alarm, h}', 1],
-      ['\\text{false alarms, times}', 1],
+      ['\\text{false alarms}', 1],
       ['\\text{latched, \\%}', 1]];
   /* the header of a number column is right-aligned like the number under it */
   cols.forEach(function(h){const e=th(h[0]);if(h[1])e.style.textAlign='right';thr.appendChild(e);});
