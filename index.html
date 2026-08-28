@@ -308,11 +308,11 @@ body.distcls .wrap{height:auto;max-height:900px}   /* เนื้อหาส�
     <div class="rail">
     <div class="panel">
       <div class="drow" id="c-machine">
-        <span class="dlab" style="flex:0 0 auto;color:#475569;font-size:15px;font-weight:600">\(\text{Machine}\)</span>
+        <span class="dlab" style="flex:0 0 auto;color:#475569;font-size:15px;font-weight:600">\(\text{Data pattern}\)</span>
         <div class="seg" data-for="machine">
-          <button type="button" data-val="0">\(\text{Swinging load}\)</button>
           <button type="button" data-val="1">\(\text{Steady load}\)</button>
           <button type="button" data-val="2">\(\text{Strong daily}\)</button>
+          <button type="button" data-val="0">\(\text{Swinging load}\)</button>
           <button type="button" data-val="3">\(\text{No structure}\)</button>
         </div>
       </div>
@@ -326,7 +326,7 @@ body.distcls .wrap{height:auto;max-height:900px}   /* เนื้อหาส�
         </div>
       </div>
       <div class="drow" id="c-chart">
-        <span class="dlab" style="flex:0 0 auto;color:#475569;font-size:15px;font-weight:600">\(\text{Detection rule}\)</span><span style="color:#6b7280;font-size:13px" id="chU"></span>
+        <span class="dlab" style="flex:0 0 auto;color:#475569;font-size:15px;font-weight:600">\(\text{Detection rule}\)</span>
         <div class="seg" data-for="chart">
           <button type="button" data-val="sh">\(\text{Shewhart}\)</button>
           <button type="button" data-val="we">\(\text{W. Electric}\)</button>
@@ -344,8 +344,8 @@ body.distcls .wrap{height:auto;max-height:900px}   /* เนื้อหาส�
       <div class="drow" id="c-fault">
         <span class="dlab" style="flex:0 0 auto;color:#475569;font-size:15px;font-weight:600">\(\text{Fault}\)</span>
         <div class="seg" data-for="fault">
-          <button type="button" data-val="drift">\(\text{Slow drift}\)</button>
           <button type="button" data-val="step">\(\text{Step jump}\)</button>
+          <button type="button" data-val="drift">\(\text{Slow drift}\)</button>
         </div>
       </div>
       <div class="row" id="rowRun">
@@ -813,8 +813,8 @@ function K(t,el,d){if(!el)return;if(window.katex){try{katex.render(String(t),el,
 
 /* the clock (RIT 2026-08-28: four days, 96 h). Every boundary is a whole day AND a whole
    load cycle -- the swing was shortened to 24 h along with the timeline, so no window is
-   biased by where a half-finished cycle happens to fall: train 24 · clean 24 · fault 48. */
-let N=96,HIST=24,FAULT=48,CLEAN_TEST=FAULT-HIST,FAULT_HOURS=N-FAULT;
+   biased by where a half-finished cycle happens to fall: train 48 · clean 24 · fault 24. */
+let N=96,HIST=48,FAULT=72,CLEAN_TEST=FAULT-HIST,FAULT_HOURS=N-FAULT;
 const SWING=24,DAILY=24,LIMZ=3.0;
 const MACH=[{id:'load',lab:'Swinging load'},{id:'steady',lab:'Steady load'},
             {id:'daily',lab:'Strong daily'},{id:'noise',lab:'No structure'}];
@@ -848,7 +848,7 @@ const SIGMA=0.55;
    they lift the bearing by 9.6 / 16.8 / 28.8 C from a machine running near 64 C -- enough to
    cross the 75 C criterion inside the window, which is what the lead-vs-75 column measures.
    fsize is pinned at Medium (0.35 C/h); the array stays for LAB.set and the gate. */
-const FSZ={drift:[0.2,0.35,0.6],step:[2.0,4.0,8.0]};
+const FSZ={drift:[0.5,0.8,1.2],step:[2.0,4.0,8.0]};
 const MWIN=6;
 /* Fixed axes, measured not guessed: across every machine x every fault x noise 0.5-2x x 8 seeds,
    models 2-5 stay inside -9.1 .. +8.4 C on the history window, so -10..10 holds all four on one
@@ -865,7 +865,7 @@ const MWIN=6;
    anything above is marked with arrows at the edge. */
 const YZ={0:[-6,6],1:[-6,15]};
 const T_HIST=0,T_SERVICE=1,T_CHART=2;
-let tab=T_HIST,mach=0,model=5,faultKind='drift',fsize=1,seed=1,chart='sh',cfsize=1;
+let tab=T_HIST,mach=1,model=5,faultKind='step',fsize=1,seed=1,chart='sh',cfsize=1;
 /* data source: the simulator, or the classroom pump packed from the course CSVs */
 /* alert rule: alarm immediately, or only after 3 consecutive hours beyond the limit --
    the persistence rule that turns flicker into one honest waking */
@@ -890,7 +890,7 @@ function faultOn(){return tab!==T_HIST;}
 function faultAmp(){return (tab===T_CHART&&faultKind==='step')?CFSZ[faultKind][cfsize]*SIGMA:FSZ[faultKind][fsize];}
 
 function regen(){
-  N=96;HIST=24;FAULT=48;
+  N=96;HIST=48;FAULT=72;
   CLEAN_TEST=FAULT-HIST;FAULT_HOURS=N-FAULT;
   const r=PG.rng(seed*7919+31);
   /* unit-variance gaussian (sum of 12 uniforms) — PG.rng's own gauss has sd 0.29, not 1 */
@@ -1396,8 +1396,6 @@ function syncRows(){
     document.getElementById('cfU'));
   /* the chart's parameters live in the readout, not on the button — three buttons carrying
      "CUSUM k 0.5, h 6" do not fit a 320px rail and the last one was being sliced off */
-  K({sh:'\\text{limit }3\\,\\text{sd}',we:'',
-     ew:'\\lambda\\,0.2,\\ L\\,3.0',cu:'k\\,0.5,\\ h\\,6'}[chart],document.getElementById('chU'));
   const reach=(faultKind==='drift'?FSZ.drift[fsize]*(N-FAULT):FSZ.step[fsize]);
   K(faultKind==='drift'
       ?(FSZ.drift[fsize].toFixed(2)+'\\ ^\\circ\\text{C per hour, }'+reach.toFixed(1)+
