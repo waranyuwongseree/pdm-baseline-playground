@@ -1102,8 +1102,11 @@ function vline(c,box,PX,i,col){c.strokeStyle=col;c.lineWidth=1;c.setLineDash([4,
 /* one row of keys in a strip of its own — swatch, then words, then the next key */
 function keys(c,x0,y,items){let x=x0;
   items.forEach(function(it){
-    c.strokeStyle=it.col;c.lineWidth=2.6;if(it.dash)c.setLineDash([5,3]);
-    c.beginPath();c.moveTo(x,y+7);c.lineTo(x+15,y+7);c.stroke();c.setLineDash([]);
+    if(it.dot){/* the plot draws points, so the swatch shows points (RIT 2026-08-28) */
+      c.fillStyle=it.col;
+      [3,9,15].forEach(function(dx){c.beginPath();c.arc(x+dx,y+7,2.2,0,6.284);c.fill();});}
+    else{c.strokeStyle=it.col;c.lineWidth=2.6;if(it.dash)c.setLineDash([5,3]);
+      c.beginPath();c.moveTo(x,y+7);c.lineTo(x+15,y+7);c.stroke();c.setLineDash([]);}
     x+=20;
     c.fillStyle=it.col;c.font='12.5px KaTeX_Main';c.textAlign='left';c.textBaseline='middle';
     c.fillText(it.txt,x,y+7);
@@ -1270,11 +1273,11 @@ function draw(){
   keys(c,L,lab3,(onChart
     ?[{col:C.res,txt:CHARTNAME[chart]+' statistic'},
       {col:C.lim,dash:true,txt:'control limit '+lim3.toFixed(2)},
-      {col:C.alarmBar,txt:'alarm hours'}]
+      {col:C.alarmBar,dot:true,txt:'alarm hours'}]
     :[{col:C.res,txt:inZ?'residual ÷ SD':'residual, °C'},
       {col:C.lim,dash:true,txt:'control limit '+(inZ?M.limitZ.toFixed(2):
         (M.limitC.toFixed(2)+' °C'))},
-      {col:C.alarmBar,txt:'alarm hours'}]).concat(kFA));
+      {col:C.alarmBar,dot:true,txt:'alarm hours'}]).concat(kFA));
 
   const narrow=window.matchMedia('(max-width:820px)').matches,
         wrap=document.querySelector('.wrap'),pnl=document.querySelector('.panel');
