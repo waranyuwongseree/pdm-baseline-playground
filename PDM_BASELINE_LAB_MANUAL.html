@@ -260,46 +260,24 @@ table.rec td[contenteditable]:focus{outline:2px solid #C78A00;background:#fff}
 <p><b>ประโยคสรุป</b> Shewhart ดูทีละชั่วโมง ถามว่าชั่วโมงนี้ผิดปกติพอไหม · EWMA จำอดีตแบบจาง ๆ · CUSUM บวกสะสมทุกส่วนที่เกิน k แล้วไม่ลืมจนกว่าจะรีเซ็ต · ที่การเลื่อน 1.5 sd ซึ่งไม่มีชั่วโมงไหนเด่นพอให้ Shewhart เห็น <b>CUSUM รอเพียง 5 ชั่วโมงและค้าง 100% ส่วน Shewhart รอ 14 ชั่วโมง</b> ทั้งที่ปลุกผิดพอ ๆ กัน · — แผนภูมิที่มีความจำมีค่ากับ<b>การเลื่อนเล็ก ๆ</b> ไม่ใช่กับฟอลต์ที่ใหญ่จนใครก็เห็น</p>
 <p><b>สรุปเอง (ยังไม่เฉลย)</b> CUSUM ที่ 0.5 sd ค้างถึง 59% แต่รอถึง 55 ชั่วโมงกว่าจะร้องครั้งแรก · ในงานจริง “รู้ตัวช้า” กับ “ไม่รู้เลย” ต่างกันตรงไหน แล้วอะไรเป็นตัวตัดสิน</p>
 <hr>
-<h2>การทดลองที่ 10 · เครื่องห้องเรียน — เลขบนจอต้องตรงกับสไลด์</h2>
-<p><b>tab</b> <code>1 และ 2</code>  ·  <b>เป้าหมาย</b> ปิดวงจรความเชื่อใจ: ข้อมูลบนหน้านี้คือไฟล์ชุดเดียวกับที่ workflow ใน KNIME อ่าน เลขที่วัดได้จึงต้องตรงกับสไลด์ทุกหลัก</p>
-<p><b>ตั้งค่า</b> ปุ่ม <b>Machine → Classroom pump</b> · ไล่ <b>Scenario</b> ทั้งห้า · ดูตารางบน tab <code>2. Test</code></p>
-<p><b>ตัวเลขที่ต้องอ่าน</b> <code>first alarm</code> · <code>false alarms</code> · <code>latched</code> ของ method ⑤ และดูว่าใครชนะในแต่ละสถานการณ์</p>
-<p class="reclab"><b>ตารางบันทึกผลของคุณ</b> — ลงมือวัดเองก่อน แล้วค่อยเลื่อนไปเทียบเฉลยข้างล่าง</p>
-<table class="rec"><thead><tr><th>สถานการณ์</th><th>⑤ เตือนครั้งแรก (ชม.)</th><th>⑤ ปลุกผิด (ครั้ง)</th><th>⑤ ค้าง (%)</th><th>ผู้ชนะ</th></tr></thead><tbody>
-<tr><td>Steady</td><td contenteditable="true" data-k="r10.0.1"></td><td contenteditable="true" data-k="r10.0.2"></td><td contenteditable="true" data-k="r10.0.3"></td><td contenteditable="true" data-k="r10.0.4"></td></tr>
-<tr><td>Cycling</td><td contenteditable="true" data-k="r10.1.1"></td><td contenteditable="true" data-k="r10.1.2"></td><td contenteditable="true" data-k="r10.1.3"></td><td contenteditable="true" data-k="r10.1.4"></td></tr>
-<tr><td>Drift</td><td contenteditable="true" data-k="r10.2.1"></td><td contenteditable="true" data-k="r10.2.2"></td><td contenteditable="true" data-k="r10.2.3"></td><td contenteditable="true" data-k="r10.2.4"></td></tr>
-<tr><td>Stuck sensor</td><td contenteditable="true" data-k="r10.3.1"></td><td contenteditable="true" data-k="r10.3.2"></td><td contenteditable="true" data-k="r10.3.3"></td><td contenteditable="true" data-k="r10.3.4"></td></tr>
-<tr><td>Fault at flow</td><td contenteditable="true" data-k="r10.4.1"></td><td contenteditable="true" data-k="r10.4.2"></td><td contenteditable="true" data-k="r10.4.3"></td><td contenteditable="true" data-k="r10.4.4"></td></tr>
-</tbody></table>
-<table><thead><tr><th>สถานการณ์</th><th>⑤ เตือนครั้งแรก</th><th>⑤ ปลุกผิด</th><th>⑤ ค้าง (%)</th><th>บทเรียนของชุดนี้</th></tr></thead><tbody>
-<tr><td>Steady</td><td>5</td><td>0</td><td>99</td><td>ชุดควบคุม — ทุก method รอด</td></tr>
-<tr><td>Cycling</td><td>7</td><td>0</td><td>99</td><td>โหลดแกว่ง เหลือ ⑤ ตัวเดียว</td></tr>
-<tr><td>Drift</td><td>0</td><td>6</td><td>100</td><td>ฐานเลื่อนเอง ⑤ เริ่มปลุกผิด</td></tr>
-<tr><td>Stuck sensor</td><td>0</td><td>1</td><td>33</td><td>เซนเซอร์ค้าง มีแต่ ⑤ ที่เห็น</td></tr>
-<tr><td>Fault at flow</td><td>ไม่เคยเตือน</td><td>0</td><td>ไม่เคยเตือน</td><td>fault อยู่ที่ flow — ⑤ ตาบอด</td></tr>
-</tbody></table>
-<p><b>ประโยคสรุป</b> ห้าสถานการณ์นี้คือชุดเดียวกับในห้องเรียน (<code>handoff/day3s2_scenarios</code>) — เปิดสไลด์เทียบเลขได้เลย ตรงทุกหลักเพราะเป็นไฟล์เดียวกัน ไม่ใช่การจำลองเลียนแบบ</p>
-<p><b>สรุปเอง (ยังไม่เฉลย)</b> ชุด Fault at flow ⑤ ไม่เตือนเลย แต่ ①—④ เตือนได้ · แปลว่าการเลือก method ควรถามอะไรกับหน้างานก่อนติดตั้ง</p>
-<hr>
-<h2>การทดลองที่ 11 · กฎ 3 ชั่วโมงติดกัน — หยุดการกะพริบโดยไม่แตะ method</h2>
+<h2>การทดลองที่ 10 · กฎ 3 ชั่วโมงติดกัน — หยุดการกะพริบโดยไม่แตะ method</h2>
 <p><b>tab</b> <code>2. Test</code>  ·  <b>เป้าหมาย</b> การกะพริบและการปลุกผิดเป็นปัญหาของ<b>ชั้นกฎ</b> ไม่ใช่เหตุผลให้ทิ้ง method — persistence rule แก้มันได้ในสวิตช์เดียว</p>
-<p><b>ตั้งค่า</b> <b>Machine → Classroom pump</b> สถานการณ์ <b>Drift</b> · สลับ <b>Alert rule</b> ระหว่าง Immediate กับ 3 h in a row</p>
+<p><b>ตั้งค่า</b> <b>Machine → Swinging load</b> · <b>Fault → drift</b> ขนาดกลาง · สลับ <b>Alert rule</b> ระหว่าง Immediate กับ 3 h in a row</p>
 <p><b>ตัวเลขที่ต้องอ่าน</b> <code>false alarms</code> ก่อนและหลังสลับ และดูว่า <code>first alarm</code> เสียอะไรไปบ้าง</p>
 <p class="reclab"><b>ตารางบันทึกผลของคุณ</b> — ลงมือวัดเองก่อน แล้วค่อยเลื่อนไปเทียบเฉลยข้างล่าง</p>
 <table class="rec"><thead><tr><th>method</th><th>ปลุกผิด · Immediate</th><th>ปลุกผิด · 3 ชม.ติดกัน</th><th>เตือนครั้งแรกช้าลงไหม</th></tr></thead><tbody>
-<tr><td>② mean baseline</td><td contenteditable="true" data-k="r11.0.1"></td><td contenteditable="true" data-k="r11.0.2"></td><td contenteditable="true" data-k="r11.0.3"></td></tr>
-<tr><td>③ moving average 6 ชม.</td><td contenteditable="true" data-k="r11.1.1"></td><td contenteditable="true" data-k="r11.1.2"></td><td contenteditable="true" data-k="r11.1.3"></td></tr>
-<tr><td>④ AR(1) ชั่วโมงก่อนหน้า</td><td contenteditable="true" data-k="r11.2.1"></td><td contenteditable="true" data-k="r11.2.2"></td><td contenteditable="true" data-k="r11.2.3"></td></tr>
-<tr><td>⑤ regression จาก flow</td><td contenteditable="true" data-k="r11.3.1"></td><td contenteditable="true" data-k="r11.3.2"></td><td contenteditable="true" data-k="r11.3.3"></td></tr>
+<tr><td>② mean baseline</td><td contenteditable="true" data-k="r10.0.1"></td><td contenteditable="true" data-k="r10.0.2"></td><td contenteditable="true" data-k="r10.0.3"></td></tr>
+<tr><td>③ moving average 6 ชม.</td><td contenteditable="true" data-k="r10.1.1"></td><td contenteditable="true" data-k="r10.1.2"></td><td contenteditable="true" data-k="r10.1.3"></td></tr>
+<tr><td>④ AR(1) ชั่วโมงก่อนหน้า</td><td contenteditable="true" data-k="r10.2.1"></td><td contenteditable="true" data-k="r10.2.2"></td><td contenteditable="true" data-k="r10.2.3"></td></tr>
+<tr><td>⑤ regression จาก flow</td><td contenteditable="true" data-k="r10.3.1"></td><td contenteditable="true" data-k="r10.3.2"></td><td contenteditable="true" data-k="r10.3.3"></td></tr>
 </tbody></table>
 <table><thead><tr><th>method</th><th>ปลุกผิด · Immediate</th><th>ปลุกผิด · 3 ชม.ติดกัน</th><th>เตือนแรก · Immediate</th><th>เตือนแรก · 3 ชม.ติดกัน</th></tr></thead><tbody>
-<tr><td>② mean baseline</td><td>22</td><td>9</td><td>0</td><td>0</td></tr>
-<tr><td>③ moving average 6 ชม.</td><td>2</td><td>0</td><td>157</td><td>ไม่เคย</td></tr>
-<tr><td>④ AR(1) ชั่วโมงก่อนหน้า</td><td>21</td><td>8</td><td>0</td><td>0</td></tr>
-<tr><td>⑤ regression จาก flow</td><td>6</td><td>1</td><td>0</td><td>0</td></tr>
+<tr><td>② mean baseline</td><td>0</td><td>0</td><td>233</td><td>238</td></tr>
+<tr><td>③ moving average 6 ชม.</td><td>0</td><td>0</td><td>ไม่เคย</td><td>ไม่เคย</td></tr>
+<tr><td>④ AR(1) ชั่วโมงก่อนหน้า</td><td>0</td><td>0</td><td>ไม่เคย</td><td>ไม่เคย</td></tr>
+<tr><td>⑤ regression จาก flow</td><td>0</td><td>0</td><td>21</td><td>33</td></tr>
 </tbody></table>
-<p><b>ประโยคสรุป</b> ⑤ บนชุด Drift: ปลุกผิดจาก 6 ครั้งเหลือ 1 ครั้ง โดยยังรู้ตัวที่ชั่วโมงเดิม — แลกด้วยการรอเพิ่มไม่กี่ชั่วโมงในกฎที่กะพริบ เช่น ③ ที่หายไปทั้งตัว</p>
+<p><b>ประโยคสรุป</b> ⑤ บนเครื่องโหลดเหวี่ยงกับ drift: ปลุกผิดจาก 0 ครั้งเหลือ 0 ครั้ง โดยยังรู้ตัวที่ชั่วโมงเดิม — แลกด้วยการรอเพิ่มไม่กี่ชั่วโมงในกฎที่กะพริบ เช่น ③ ที่หายไปทั้งตัว</p>
 <p><b>สรุปเอง (ยังไม่เฉลย)</b> กฎ 3 ชั่วโมงติดกันช่วยเครื่องไหนมากที่สุด แล้วมันมีราคากับ fault แบบไหน</p>
 <hr>
 <h2>ที่มาของตัวเลข</h2>
