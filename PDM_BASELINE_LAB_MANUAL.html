@@ -136,21 +136,21 @@ table.rec td[contenteditable]:focus{outline:2px solid #C78A00;background:#fff}
 <h2>การทดลองที่ 4 · ความขัดแย้ง — residual เล็กที่สุด กับ จับฟอลต์ได้ ไม่ใช่เรื่องเดียวกัน</h2>
 <p><b>tab</b> <code>1 → 2</code>  ·  <b>เป้าหมาย</b> <b>นี่คือการทดลองที่ทั้งหน้ามีไว้เพื่อมัน</b> ให้ผู้เรียนกดสลับสอง tab แล้วเจอความขัดแย้งด้วยตัวเอง</p>
 <p><b>ตั้งค่า</b> tab 1 เครื่อง <b>โหลดเหวี่ยง</b> จด <code>sd</code> ของ ④ และ ⑤ · แล้วกด tab 2 ฟอลต์ <b>ไต่ช้า</b> ขนาดกลาง จด <code>first alarm</code> ของสองตัวเดิม — sd ไม่เปลี่ยนตอนข้าม tab เพราะเป็น fit เดียวกัน</p>
-<p><b>ตัวเลขที่ต้องอ่าน</b> <code>sd</code> จาก tab 1 เทียบกับ <code>first alarm</code> และ <code>latched</code> จาก tab 2 ของ method ตัวเดียวกัน</p>
+<p><b>ตัวเลขที่ต้องอ่าน</b> <code>sd</code> จาก tab 1 เทียบกับ <code>first alarm</code> และ <code>detected</code> จาก tab 2 ของ method ตัวเดียวกัน</p>
 <p class="reclab"><b>ตารางบันทึกผลของคุณ</b> — ลงมือวัดเองก่อน แล้วค่อยเลื่อนไปเทียบเฉลยข้างล่าง</p>
-<table class="rec"><thead><tr><th>method</th><th>sd (tab 1)</th><th>first alarm (tab 2)</th><th>latched %</th></tr></thead><tbody>
+<table class="rec"><thead><tr><th>method</th><th>sd (tab 1)</th><th>first alarm (tab 2)</th><th>จับได้ (จาก 24)</th></tr></thead><tbody>
 <tr><td>① fixed limit 75</td><td contenteditable="true" data-k="r4.0.1"></td><td contenteditable="true" data-k="r4.0.2"></td><td contenteditable="true" data-k="r4.0.3"></td></tr>
 <tr><td>② mean baseline</td><td contenteditable="true" data-k="r4.1.1"></td><td contenteditable="true" data-k="r4.1.2"></td><td contenteditable="true" data-k="r4.1.3"></td></tr>
 <tr><td>③ moving average 6 ชม.</td><td contenteditable="true" data-k="r4.2.1"></td><td contenteditable="true" data-k="r4.2.2"></td><td contenteditable="true" data-k="r4.2.3"></td></tr>
 <tr><td>④ AR(1) ชั่วโมงก่อนหน้า</td><td contenteditable="true" data-k="r4.3.1"></td><td contenteditable="true" data-k="r4.3.2"></td><td contenteditable="true" data-k="r4.3.3"></td></tr>
 <tr><td>⑤ regression จาก flow</td><td contenteditable="true" data-k="r4.4.1"></td><td contenteditable="true" data-k="r4.4.2"></td><td contenteditable="true" data-k="r4.4.3"></td></tr>
 </tbody></table>
-<table><thead><tr><th>method</th><th>sd จาก tab 1</th><th>อันดับ sd</th><th>เตือนครั้งแรก (ชม.หลังฟอลต์)</th><th>ค้าง (%)</th><th>สรุป</th></tr></thead><tbody>
-<tr><td>① fixed limit 75</td><td>4.129</td><td>4</td><td>94</td><td>22</td><td></td></tr>
-<tr><td>② mean baseline</td><td>4.129</td><td>5</td><td>226</td><td>56</td><td></td></tr>
-<tr><td>③ moving average 6 ชม.</td><td>0.911</td><td>3</td><td>73</td><td>2</td><td></td></tr>
-<tr><td>④ AR(1) ชั่วโมงก่อนหน้า</td><td>0.856</td><td>2</td><td>85</td><td>2</td><td></td></tr>
-<tr><td>⑤ regression จาก flow</td><td>0.547</td><td>1</td><td>18</td><td>96</td><td><b>ดีทั้งสองด้าน</b></td></tr>
+<table><thead><tr><th>method</th><th>sd จาก tab 1</th><th>อันดับ sd</th><th>เตือนครั้งแรก (ชม.หลังฟอลต์)</th><th>จับได้</th><th>สรุป</th></tr></thead><tbody>
+<tr><td>① fixed limit 75</td><td>4.129</td><td>4</td><td>94</td><td>24/24</td><td></td></tr>
+<tr><td>② mean baseline</td><td>4.129</td><td>5</td><td>226</td><td>24/24</td><td></td></tr>
+<tr><td>③ moving average 6 ชม.</td><td>0.911</td><td>3</td><td>73</td><td>6/24</td><td></td></tr>
+<tr><td>④ AR(1) ชั่วโมงก่อนหน้า</td><td>0.856</td><td>2</td><td>85</td><td>14/24</td><td></td></tr>
+<tr><td>⑤ regression จาก flow</td><td>0.547</td><td>1</td><td>18</td><td>24/24</td><td><b>ดีทั้งสองด้าน</b></td></tr>
 </tbody></table>
 <p><b>ประโยคสรุป</b> ④ ทำนายจากชั่วโมงก่อนหน้า พอความร้อนไต่ขึ้นช้า ๆ มันก็ไต่ตาม ค่าที่ควรเป็นเลยไต่ตามฟอลต์ไปด้วย residual จึงแทบไม่ขยับ — sd ดีเป็นอันดับสอง แต่แทบไม่เคยร้อง (จับได้ 1 ชั่วโมงจาก 240) · ⑤ ทำนายจากภาระงาน ซึ่งไม่ได้ป่วยไปกับตัวเครื่อง ฟอลต์จึงโผล่เต็ม ๆ และค้างจนจบ</p>
 <p><b>สรุปเอง (ยังไม่เฉลย)</b> ถ้าต้องเลือก method ไปติดตั้งจริง จะใช้ตัวเลขไหนตัดสิน · และค่า sd ที่สวยของ ④ ยังมีประโยชน์อะไรเหลืออยู่ไหม</p>
@@ -158,25 +158,25 @@ table.rec td[contenteditable]:focus{outline:2px solid #C78A00;background:#fff}
 <h2>การทดลองที่ 5 · ตารางคะแนนเต็ม — กติกาเดียว ห้า method</h2>
 <p><b>tab</b> <code>2. Monitoring</code>  ·  <b>เป้าหมาย</b> ให้เห็นว่าพอเปลี่ยนจาก “ตัวเลขคุณภาพ method” มาเป็น “ผลของการเตือนจริง” ช่องว่างระหว่าง method ไม่ใช่เรื่องเปอร์เซ็นต์อีกต่อไป แต่เป็นเรื่อง เตือน กับ ไม่เตือนเลย</p>
 <p><b>ตั้งค่า</b> เครื่อง <b>โหลดเหวี่ยง</b> ฟอลต์ <b>ไต่ช้า</b> ขนาดกลาง · อ่านทั้งตาราง ไม่ต้องกดทีละ method</p>
-<p><b>ตัวเลขที่ต้องอ่าน</b> สามคอลัมน์ของหน้า (2026-08-28 เปลี่ยนเป็นหน่วยเวลา): <code>first alarm</code> กี่ชั่วโมงหลังฟอลต์เริ่ม · <code>false alarms</code> ปลุกผิดกี่ครั้ง (นับเป็นเหตุการณ์) · <code>latched</code> หลังร้องแล้วค้างกี่ %%</p>
+<p><b>ตัวเลขที่ต้องอ่าน</b> สามคอลัมน์ของหน้า (2026-08-28 เปลี่ยนเป็นหน่วยเวลา): <code>first alarm</code> กี่ชั่วโมงหลังฟอลต์เริ่ม · <code>false alarms</code> ปลุกผิดกี่ครั้ง (นับเป็นเหตุการณ์) · <code>detected</code> จับได้กี่รอบจาก 24</p>
 <p class="reclab"><b>ตารางบันทึกผลของคุณ</b> — ลงมือวัดเองก่อน แล้วค่อยเลื่อนไปเทียบเฉลยข้างล่าง</p>
-<table class="rec"><thead><tr><th>method</th><th>เตือนครั้งแรก (ชม.)</th><th>เตือนผิด (ครั้ง)</th><th>ค้าง (%)</th></tr></thead><tbody>
+<table class="rec"><thead><tr><th>method</th><th>เตือนครั้งแรก (ชม.)</th><th>เตือนผิด (ครั้ง)</th><th>จับได้ (จาก 24)</th></tr></thead><tbody>
 <tr><td>① fixed limit 75</td><td contenteditable="true" data-k="r5.0.1"></td><td contenteditable="true" data-k="r5.0.2"></td><td contenteditable="true" data-k="r5.0.3"></td></tr>
 <tr><td>② mean baseline</td><td contenteditable="true" data-k="r5.1.1"></td><td contenteditable="true" data-k="r5.1.2"></td><td contenteditable="true" data-k="r5.1.3"></td></tr>
 <tr><td>③ moving average 6 ชม.</td><td contenteditable="true" data-k="r5.2.1"></td><td contenteditable="true" data-k="r5.2.2"></td><td contenteditable="true" data-k="r5.2.3"></td></tr>
 <tr><td>④ AR(1) ชั่วโมงก่อนหน้า</td><td contenteditable="true" data-k="r5.3.1"></td><td contenteditable="true" data-k="r5.3.2"></td><td contenteditable="true" data-k="r5.3.3"></td></tr>
 <tr><td>⑤ regression จาก flow</td><td contenteditable="true" data-k="r5.4.1"></td><td contenteditable="true" data-k="r5.4.2"></td><td contenteditable="true" data-k="r5.4.3"></td></tr>
 </tbody></table>
-<table><thead><tr><th>method</th><th>sd °C</th><th>เตือนครั้งแรก (ชม.หลังฟอลต์)</th><th>เตือนผิด (ครั้ง)</th><th>ค้าง (%)</th></tr></thead><tbody>
-<tr><td>① fixed limit 75</td><td>4.129</td><td><b>94</b></td><td>0.0</td><td>22</td></tr>
-<tr><td>② mean baseline</td><td>4.129</td><td><b>226</b></td><td>0.0</td><td>56</td></tr>
-<tr><td>③ moving average 6 ชม.</td><td>0.911</td><td><b>73</b></td><td>0.3</td><td>2</td></tr>
-<tr><td>④ AR(1) ชั่วโมงก่อนหน้า</td><td>0.856</td><td><b>85</b></td><td>0.6</td><td>2</td></tr>
-<tr><td>⑤ regression จาก flow</td><td>0.547</td><td><b>18</b></td><td>0.8</td><td>96</td></tr>
+<table><thead><tr><th>method</th><th>sd °C</th><th>เตือนครั้งแรก (ชม.หลังฟอลต์)</th><th>เตือนผิด (ครั้ง)</th><th>จับได้</th></tr></thead><tbody>
+<tr><td>① fixed limit 75</td><td>4.129</td><td><b>94</b></td><td>0.0</td><td>24/24</td></tr>
+<tr><td>② mean baseline</td><td>4.129</td><td><b>226</b></td><td>0.0</td><td>24/24</td></tr>
+<tr><td>③ moving average 6 ชม.</td><td>0.911</td><td><b>73</b></td><td>0.3</td><td>6/24</td></tr>
+<tr><td>④ AR(1) ชั่วโมงก่อนหน้า</td><td>0.856</td><td><b>85</b></td><td>0.6</td><td>14/24</td></tr>
+<tr><td>⑤ regression จาก flow</td><td>0.547</td><td><b>18</b></td><td>0.8</td><td>24/24</td></tr>
 </tbody></table>
 <p><code>FP</code> ของ ⑤ อยู่ที่ 0.79 ครั้งใน 480 ชั่วโมงที่ยังปกติ · เกณฑ์ 3 sd ด้านเดียวคาดว่าจะเตือนผิด 0.65 ครั้ง — ตรงกับทฤษฎี ซึ่งแปลว่าช่วง test ที่ยังสะอาดนี้ทำหน้าที่วัด false alarm ได้จริง (v1 ไม่มีช่วงนี้เลย เพราะฟอลต์เริ่มตรงเส้นแบ่งพอดี)</p>
-<p><b>ประโยคสรุป</b> กติกาเดียวกันหมด <code>z ≥ 3</code> แต่ผลลัพธ์ไม่ใช่ “ดีกว่ากันนิดหน่อย” — ⑤ รู้ตัวหลังฟอลต์ 18 ชั่วโมง ปลุกผิดเพียง 0.8 ครั้ง และค้าง 96% · ส่วน sd ที่สวยของ ③ และ ④ ไม่ได้แปลงเป็นการเตือนที่ใช้ได้เลย</p>
-<p><b>สรุปเอง (ยังไม่เฉลย)</b> ถ้าอยากให้รู้ตัวเร็วขึ้นอีก ต้องยอมแลกอะไร · แล้วการค้างกับการกะพริบ อันไหนคือสิ่งที่ห้องควบคุมอยากเห็นมากกว่ากัน</p>
+<p><b>ประโยคสรุป</b> กติกาเดียวกันหมด <code>z ≥ 3</code> แต่ผลลัพธ์ไม่ใช่ “ดีกว่ากันนิดหน่อย” — ⑤ รู้ตัวหลังฟอลต์ 18 ชั่วโมง ปลุกผิดเพียง 0.8 ครั้ง และจับได้ทั้ง 24/24 รอบ · ส่วน sd ที่สวยของ ③ และ ④ ไม่ได้แปลงเป็นการเตือนที่ใช้ได้เลย</p>
+<p><b>สรุปเอง (ยังไม่เฉลย)</b> ถ้าอยากให้รู้ตัวเร็วขึ้นอีก ต้องยอมแลกอะไร · แล้ว method ที่จับได้แค่บางรอบ ควรนับว่าใช้ได้หรือไม่</p>
 <hr>
 <h2>การทดลองที่ 6 · เครื่องที่ method ง่าย ๆ ก็เกือบพอ</h2>
 <p><b>tab</b> <code>2. Monitoring</code>  ·  <b>เป้าหมาย</b> ให้เห็นว่าคุณค่าของ method = ปริมาณบริบทที่มันเพิ่มเข้ามา · เครื่องที่โหลดไม่ขยับ ก็แทบไม่มีบริบทให้เพิ่ม</p>
@@ -257,8 +257,8 @@ table.rec td[contenteditable]:focus{outline:2px solid #C78A00;background:#fff}
 <tr><td>3.0 sd</td><td>1 ชม.</td><td>1 ชม.</td><td>2 ชม.</td><td>50%</td><td>100%</td><td>100%</td></tr>
 </tbody></table>
 <p>ปลุกผิดใน 480 ชั่วโมงที่ยังปกติ — Shewhart 0.79 · EWMA 0.54 · CUSUM 0.13 ครั้ง <b>ใกล้เคียงกันทั้งสาม</b> นั่นคือเงื่อนไขที่ทำให้ตารางข้างบนเทียบกันได้</p>
-<p><b>ประโยคสรุป</b> Shewhart ดูทีละชั่วโมง ถามว่าชั่วโมงนี้ผิดปกติพอไหม · EWMA จำอดีตแบบจาง ๆ · CUSUM บวกสะสมทุกส่วนที่เกิน k แล้วไม่ลืมจนกว่าจะรีเซ็ต · ที่การเลื่อน 1.5 sd ซึ่งไม่มีชั่วโมงไหนเด่นพอให้ Shewhart เห็น <b>CUSUM รอเพียง 5 ชั่วโมงและค้าง 100% ส่วน Shewhart รอ 14 ชั่วโมง</b> ทั้งที่ปลุกผิดพอ ๆ กัน · — แผนภูมิที่มีความจำมีค่ากับ<b>การเลื่อนเล็ก ๆ</b> ไม่ใช่กับฟอลต์ที่ใหญ่จนใครก็เห็น</p>
-<p><b>สรุปเอง (ยังไม่เฉลย)</b> CUSUM ที่ 0.5 sd ค้างถึง 59% แต่รอถึง 55 ชั่วโมงกว่าจะร้องครั้งแรก · ในงานจริง “รู้ตัวช้า” กับ “ไม่รู้เลย” ต่างกันตรงไหน แล้วอะไรเป็นตัวตัดสิน</p>
+<p><b>ประโยคสรุป</b> Shewhart ดูทีละชั่วโมง ถามว่าชั่วโมงนี้ผิดปกติพอไหม · EWMA จำอดีตแบบจาง ๆ · CUSUM บวกสะสมทุกส่วนที่เกิน k แล้วไม่ลืมจนกว่าจะรีเซ็ต · ที่การเลื่อน 1.5 sd ซึ่งไม่มีชั่วโมงไหนเด่นพอให้ Shewhart เห็น <b>CUSUM รอเพียง 5 ชั่วโมง ส่วน Shewhart รอ 14 ชั่วโมง</b> ทั้งที่ปลุกผิดพอ ๆ กัน · — แผนภูมิที่มีความจำมีค่ากับ<b>การเลื่อนเล็ก ๆ</b> ไม่ใช่กับฟอลต์ที่ใหญ่จนใครก็เห็น</p>
+<p><b>สรุปเอง (ยังไม่เฉลย)</b> CUSUM ที่ 0.5 sd จับได้ 24/24 รอบ แต่รอเฉลี่ย 55 ชั่วโมงกว่าจะร้องครั้งแรก · ในงานจริง “รู้ตัวช้า” กับ “ไม่รู้เลย” ต่างกันตรงไหน แล้วอะไรเป็นตัวตัดสิน</p>
 <hr>
 <h2>การทดลองที่ 10 · กฎ 3 ชั่วโมงติดกัน — หยุดการกะพริบโดยไม่แตะ method</h2>
 <p><b>tab</b> <code>2. Monitoring</code>  ·  <b>เป้าหมาย</b> การกะพริบและการปลุกผิดเป็นปัญหาของ<b>ชั้นกฎ</b> ไม่ใช่เหตุผลให้ทิ้ง method — persistence rule แก้มันได้ในสวิตช์เดียว</p>

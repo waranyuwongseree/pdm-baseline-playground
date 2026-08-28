@@ -290,7 +290,7 @@ body.distcls .wrap{height:auto;max-height:900px}   /* เนื้อหาส�
 </style>
 </head>
 <body class="pg">
-<h2 class="sr-only" style="position:absolute;width:1px;height:1px;overflow:hidden">Five methods of building an expected bearing temperature are compared on one pump. The first tab shows only a stretch of history believed to be healthy, with the driving flow, the responding temperature and each method's residual, and asks which method actually explains this machine. The second tab keeps the same fit and lets the clock run into a period the method never saw, part of it still healthy and part of it carrying a fault, and scores every method on its own alarm limit in the operator's units: how many hours after the fault it first speaks, how many times it cries wolf while the machine is still healthy, and whether the alarm stays latched or flickers afterwards.</h2>
+<h2 class="sr-only" style="position:absolute;width:1px;height:1px;overflow:hidden">Five methods of building an expected bearing temperature are compared on one pump. The first tab shows only a stretch of history believed to be healthy, with the driving flow, the responding temperature and each method's residual, and asks which method actually explains this machine. The second tab keeps the same fit and lets the clock run into a period the method never saw, part of it still healthy and part of it carrying a fault, and scores every method on its own alarm limit in the operator's units: how many hours after the fault it first speaks, how many times it cries wolf while the machine is still healthy, and how many of the 24 random runs it catches the fault in at all.</h2>
 <div class="wrap">
   <div class="hdr">
     <h1 id="__pgt" data-tex="\text{Baseline methods for anomaly detection}">Baseline methods for anomaly detection</h1>
@@ -1213,20 +1213,15 @@ function draw(){
   c.strokeStyle=C.lim;c.lineWidth=1.5;c.setLineDash([7,4]);
   c.beginPath();c.moveTo(b3.l,ly);c.lineTo(b3.r,ly);c.stroke();c.setLineDash([]);
   edgeMarks(c,b3,A3.PX,series,i0,i1,sr[0],sr[1],C.res);
-  /* WHEN it first alarmed, on the chart itself -- fast vs slow must be visible, not
-     inferred from a squint at the crossing (RIT 2026-08-28) */
-  {let fAl=null;
-   if(inService&&!onChart&&M.first!=null)fAl=M.first;
-   else if(onChart){for(let i=Math.max(i0,FAULT);i<i1;i++){
-     if(series[i]!=null&&isFinite(series[i])&&series[i]>=lim3){fAl=i;break;}}}
-   if(fAl!==null){const xx=A3.PX(fAl);
-     c.strokeStyle=C.lim;c.lineWidth=1.5;c.setLineDash([3,3]);
-     c.beginPath();c.moveTo(xx,b3.t);c.lineTo(xx,b3.b);c.stroke();c.setLineDash([]);
-     const txt='first alarm +'+(fAl-FAULT)+' h';
-     c.font='600 12px system-ui,sans-serif';
-     const tw=c.measureText(txt).width,left=xx+6+tw>b3.r;
-     c.fillStyle=C.lim;
-     c.fillText(txt,left?xx-6-tw:xx+6,b3.t+14);}}
+  /* WHEN it first alarmed -- the dashed line marks the hour in the plot, and the wording
+     sits in the key row like every other label, never on top of the data (RIT 2026-08-28) */
+  let fAl=null;
+  if(inService&&!onChart&&M.first!=null)fAl=M.first;
+  else if(onChart){for(let i=Math.max(i0,FAULT);i<i1;i++){
+    if(series[i]!=null&&isFinite(series[i])&&series[i]>=lim3){fAl=i;break;}}}
+  if(fAl!==null){const xx=A3.PX(fAl);
+    c.strokeStyle=C.lim;c.lineWidth=1.5;c.setLineDash([3,3]);
+    c.beginPath();c.moveTo(xx,b3.t);c.lineTo(xx,b3.b);c.stroke();c.setLineDash([]);}
 
   /* ---- the strips ---- */
   regionStrip(c,A1.PX,regionY,inService
@@ -1244,14 +1239,15 @@ function draw(){
   keys(c,L,lab2,[{col:C.act,txt:'temp, °C'}].concat(
     model===1?[]:[{col:C.exp,dash:true,txt:'expected'}]).concat(
     [{col:C.fixed,dash:true,txt:'75 °C limit'}]));
-  keys(c,L,lab3,onChart
+  const kFA=fAl===null?[]:[{col:C.lim,dash:true,txt:'first alarm +'+(fAl-FAULT)+' h'}];
+  keys(c,L,lab3,(onChart
     ?[{col:C.res,txt:CHARTNAME[chart]+' statistic'},
       {col:C.lim,dash:true,txt:'control limit '+lim3.toFixed(2)},
       {col:C.alarmBar,txt:'alarm zone'}]
     :[{col:C.res,txt:inZ?'residual ÷ SD':'residual, °C'},
       {col:C.lim,dash:true,txt:'control limit '+(inZ?M.limitZ.toFixed(2):
         (M.limitC.toFixed(2)+' °C'))},
-      {col:C.alarmBar,txt:'alarm zone'}]);
+      {col:C.alarmBar,txt:'alarm zone'}]).concat(kFA));
 
   const narrow=window.matchMedia('(max-width:820px)').matches,
         wrap=document.querySelector('.wrap'),pnl=document.querySelector('.panel');
@@ -1277,7 +1273,7 @@ function table(){
     [['\\text{Control chart}', 0],
      ['\\text{first alarm, h}', 1],
      ['\\text{false alarms}', 1],
-     ['\\text{latched, \\%}', 1]].forEach(function(h){
+     ['\\text{detected, of 24}', 1]].forEach(function(h){
        const e = th(h[0]); if (h[1]) e.style.textAlign = 'right'; thr.appendChild(e);});
     const AV = avgChart();
     const delays = CHART_ORDER.map(function(w){return AV[w].delay === null ? Infinity : AV[w].delay;});
@@ -1290,7 +1286,7 @@ function table(){
       tr.appendChild(td(x.delay === null ? '\\text{never}' : x.delay.toFixed(1),
                         x.delay === null ? 'bad' : (win ? 'win' : '')));
       tr.appendChild(td(x.ep.toFixed(2), x.ep > 0.005 ? 'bad' : ''));
-      tr.appendChild(td(x.latch === null ? '\\text{--}' : String(Math.round(x.latch))));
+      tr.appendChild(td(x.fires + '/24', x.fires === 0 ? 'bad' : ''));
       tbb.appendChild(tr);});
     return;}
   const R=ranking();
@@ -1307,7 +1303,7 @@ function table(){
       ['\\text{control limit},\\ ^\\circ\\text{C}', 1],
       ['\\text{first alarm, h}', 1],
       ['\\text{false alarms}', 1],
-      ['\\text{latched, \\%}', 1]];
+      ['\\text{detected, of 24}', 1]];
   /* the header of a number column is right-aligned like the number under it */
   cols.forEach(function(h){const e=th(h[0]);if(h[1])e.style.textAlign='right';thr.appendChild(e);});
   const AV=(tab===T_SERVICE)?avgService():null;
@@ -1337,7 +1333,7 @@ function table(){
       tr.appendChild(td(a.delay===null?'\\text{never}':a.delay.toFixed(1),
                         a.delay===null?'bad':(k===starK?'win':'')));
       tr.appendChild(td(a.ep.toFixed(2),a.ep>0.005?'bad':''));
-      tr.appendChild(td(a.latch===null?'\\text{--}':String(Math.round(a.latch))));}
+      tr.appendChild(td(a.fires+'/24',a.fires===0?'bad':''));}
     tbb.appendChild(tr);});}
 
 /* the model, written out — value or equation, in the same words the manual uses */
@@ -1411,7 +1407,7 @@ function avgService(){const S0=seed,A={};
   seed=S0;regen();
   const mean=function(v){return v.length?v.reduce(function(x,y){return x+y;},0)/v.length:null;};
   const out={};[1,2,3,4,5].forEach(function(k){
-    out[k]={delay:mean(A[k].d),ep:mean(A[k].ep),latch:mean(A[k].la)};});
+    out[k]={delay:mean(A[k].d),ep:mean(A[k].ep),fires:A[k].d.length};});
   return out;}
 function avgChart(){const S0=seed,A={};
   CHART_ORDER.forEach(function(w){A[w]={d:[],ep:[],la:[]};});
@@ -1421,7 +1417,7 @@ function avgChart(){const S0=seed,A={};
   seed=S0;regen();
   const mean=function(v){return v.length?v.reduce(function(x,y){return x+y;},0)/v.length:null;};
   const out={};CHART_ORDER.forEach(function(w){
-    out[w]={delay:mean(A[w].d),ep:mean(A[w].ep),latch:mean(A[w].la)};});
+    out[w]={delay:mean(A[w].d),ep:mean(A[w].ep),fires:A[w].d.length};});
   return out;}
 function refresh(){syncRows();regen();draw();table();}
 function setSeg(name,v){
