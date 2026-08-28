@@ -797,8 +797,8 @@ if (typeof document !== 'undefined') (function () {
    residual = temp - expected · sd learned ONCE on the history window · z = residual / sd
 
    TWO TABS, ONE DATASET, ONE FIT:
-     tab 1  hours 0-720     the history you believe is healthy — this IS the training window
-     tab 2  hours 0-1440    the same fit, clock running on: 720-1200 still healthy, 1200-1440 faulty
+     tab 1  hours 0-24      the history you believe is healthy — this IS the training window
+     tab 2  hours 24-96     the same fit, clock running on: 24-48 still healthy, 48-96 faulty
    The stretch tab 1 shows is not merely like tab 2's training window, it is the same hours, so a
    number written down on tab 1 is the same number tab 2 uses. */
 /* one colour per ROLE (RIT 2026-08-28): navy = any data series, red dashed = any limit,
@@ -811,11 +811,9 @@ const C={flow:'#6E93B8',act:'#6E93B8',res:'#6E93B8',
          faultTx:'#7E5A93',cleanTx:'#3F7D63',ax:'#94a3b8',axtx:'#64748b',zero:'#9aa3b2'};
 function K(t,el,d){if(!el)return;if(window.katex){try{katex.render(String(t),el,{throwOnError:false,displayMode:!!d});return;}catch(e){}}el.textContent=t;}
 
-/* the clock. Every boundary is a whole day AND a whole load cycle (240 h), so no window is
-   biased by where a half-finished swing happens to fall. 1440 h is also exactly the length of
-   the real pump-02 file the workflow reads, which gives the learner a bridge back to it. */
-/* the SIMULATOR timeline is 1440 h; the CLASSROOM pump is the workflow's own 960 h
-   (train 480, fault from 768), so the bounds are variables set per data source */
+/* the clock (RIT 2026-08-28: four days, 96 h). Every boundary is a whole day AND a whole
+   load cycle -- the swing was shortened to 24 h along with the timeline, so no window is
+   biased by where a half-finished cycle happens to fall: train 24 · clean 24 · fault 48. */
 let N=96,HIST=24,FAULT=48,CLEAN_TEST=FAULT-HIST,FAULT_HOURS=N-FAULT;
 const SWING=24,DAILY=24,LIMZ=3.0;
 const MACH=[{id:'load',lab:'Swinging load'},{id:'steady',lab:'Steady load'},
@@ -846,12 +844,10 @@ const CFSZ={step:[0.5,1.5,3.0],drift:[1.0,2.0,4.0]};   /* Large is 3 sd on purpo
    0.22 made the simulation 2.5x cleaner than the machine it is supposed to stand for. One
    sigma for every machine, so there is no lever and nothing to mis-set. */
 const SIGMA=0.55;
-/* Fault sizes are set by what they DO, not by round numbers. Over the 240-hour fault window
-   they lift the bearing by 7.2 / 14.4 / 28.8 C from a machine running near 64 C. That matters
-   because the fixed 75 C limit only speaks once the machine actually reaches 75: at Small it
-   never does, at Medium it does but 88 hours after the fault started, at Large after 48.
-   The deck's sentence is "75 is always right but too late" — with the old sizes the fault never
-   got near 75 at all and the fixed limit simply never fired, which is a different claim. */
+/* Fault sizes are set by what they DO, not by round numbers. Over the 48-hour fault window
+   they lift the bearing by 9.6 / 16.8 / 28.8 C from a machine running near 64 C -- enough to
+   cross the 75 C criterion inside the window, which is what the lead-vs-75 column measures.
+   fsize is pinned at Medium (0.35 C/h); the array stays for LAB.set and the gate. */
 const FSZ={drift:[0.2,0.35,0.6],step:[2.0,4.0,8.0]};
 const MWIN=6;
 /* Fixed axes, measured not guessed: across every machine x every fault x noise 0.5-2x x 8 seeds,
