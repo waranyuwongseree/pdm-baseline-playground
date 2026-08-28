@@ -290,7 +290,7 @@ body.distcls .wrap{height:auto;max-height:900px}   /* เนื้อหาส�
 </style>
 </head>
 <body class="pg">
-<h2 class="sr-only" style="position:absolute;width:1px;height:1px;overflow:hidden">Five methods of building an expected bearing temperature are compared on one pump. The first tab shows only a stretch of history believed to be healthy, with the driving flow, the responding temperature and each method's residual, and asks which method actually explains this machine. The second tab keeps the same fit and lets the clock run into a period the method never saw, part of it still healthy and part of it carrying a fault, and scores every method on its own alarm limit in the operator's units: how many hours after the fault it first speaks, how many times it cries wolf while the machine is still healthy, and how many of the 24 random runs it catches the fault in at all.</h2>
+<h2 class="sr-only" style="position:absolute;width:1px;height:1px;overflow:hidden">Five methods of building an expected bearing temperature are compared on one pump. The first tab shows only a stretch of history believed to be healthy, with the driving flow, the responding temperature and each method's residual, and asks which method actually explains this machine. The second tab keeps the same fit and lets the clock run into a period the method never saw, part of it still healthy and part of it carrying a fault, and scores every method on its own alarm limit in the operator's units: how many hours after the fault it first speaks, and how many times it cries wolf while the machine is still healthy.</h2>
 <div class="wrap">
   <div class="hdr">
     <h1 id="__pgt" data-tex="\text{Baseline methods for anomaly detection}">Baseline methods for anomaly detection</h1>
@@ -360,13 +360,6 @@ body.distcls .wrap{height:auto;max-height:900px}   /* เนื้อหาส�
           <button type="button" data-val="0">\(\text{Small}\)</button>
           <button type="button" data-val="1">\(\text{Medium}\)</button>
           <button type="button" data-val="2">\(\text{Large}\)</button>
-        </div>
-      </div>
-      <div class="drow" id="c-persist">
-        <span class="dlab" style="flex:0 0 auto;color:#475569;font-size:15px;font-weight:600">\(\text{Alert rule}\)</span>
-        <div class="seg" data-for="persist">
-          <button type="button" data-val="1">\(\text{Immediate}\)</button>
-          <button type="button" data-val="3">\(3\text{ h in a row}\)</button>
         </div>
       </div>
       <div class="row" id="rowRun">
@@ -1271,9 +1264,8 @@ function table(){
     /* the three time-based readings (2026-08-28): first alarm as hours after the fault,
        false alarms as EPISODES, and latched-vs-flickering after the first alarm */
     [['\\text{Control chart}', 0],
-     ['\\text{first alarm, h}', 1],
-     ['\\text{false alarms}', 1],
-     ['\\text{detected, of 24}', 1]].forEach(function(h){
+     ['\\text{ARL}_1\\ \\text{(first alarm, h)}', 1],
+     ['\\text{false alarms}', 1]].forEach(function(h){
        const e = th(h[0]); if (h[1]) e.style.textAlign = 'right'; thr.appendChild(e);});
     const AV = avgChart();
     const delays = CHART_ORDER.map(function(w){return AV[w].delay === null ? Infinity : AV[w].delay;});
@@ -1286,7 +1278,6 @@ function table(){
       tr.appendChild(td(x.delay === null ? '\\text{never}' : x.delay.toFixed(1),
                         x.delay === null ? 'bad' : (win ? 'win' : '')));
       tr.appendChild(td(x.ep.toFixed(2), x.ep > 0.005 ? 'bad' : ''));
-      tr.appendChild(td(x.fires + '/24', x.fires === 0 ? 'bad' : ''));
       tbb.appendChild(tr);});
     return;}
   const R=ranking();
@@ -1297,13 +1288,11 @@ function table(){
   const cols = tab===T_HIST
     ?[['\\text{Method}', 0], ['\\text{what it predicts}', 0],
       ['\\text{residual SD},\\ ^\\circ\\text{C}', 1],
-      ['\\text{bias},\\ ^\\circ\\text{C}', 1],
       ['\\text{lag-1 autocorrelation}', 1]]
     :[['\\text{Method}', 0],
       ['\\text{control limit},\\ ^\\circ\\text{C}', 1],
       ['\\text{first alarm, h}', 1],
-      ['\\text{false alarms}', 1],
-      ['\\text{detected, of 24}', 1]];
+      ['\\text{false alarms}', 1]];
   /* the header of a number column is right-aligned like the number under it */
   cols.forEach(function(h){const e=th(h[0]);if(h[1])e.style.textAlign='right';thr.appendChild(e);});
   const AV=(tab===T_SERVICE)?avgService():null;
@@ -1321,19 +1310,16 @@ function table(){
       tr.appendChild(td(FORMULA[k],'lft'));
       /* method 1 fits nothing — the deck's own words: no sd, no z. Its fitting columns are a
          dash; the 75 C line itself is on the chart (the "75°C limit" checkbox). */
-      if(k===1){tr.appendChild(td('\\text{--}'));tr.appendChild(td('\\text{--}'));
-        tr.appendChild(td('\\text{--}'));}
+      if(k===1){tr.appendChild(td('\\text{--}'));tr.appendChild(td('\\text{--}'));}
       else{
         tr.appendChild(td(M.sd.toFixed(2),k===R.winner?'win':''));
-        tr.appendChild(td(M.bias.toFixed(2),Math.abs(M.bias)>0.05?'bad':''));
         tr.appendChild(td(M.ac1.toFixed(2)));}}
     else{
       const a=AV[k];
       tr.appendChild(td(M.limitC.toFixed(2),k===1?'bad':''));
       tr.appendChild(td(a.delay===null?'\\text{never}':a.delay.toFixed(1),
                         a.delay===null?'bad':(k===starK?'win':'')));
-      tr.appendChild(td(a.ep.toFixed(2),a.ep>0.005?'bad':''));
-      tr.appendChild(td(a.fires+'/24',a.fires===0?'bad':''));}
+      tr.appendChild(td(a.ep.toFixed(2),a.ep>0.005?'bad':''));}
     tbb.appendChild(tr);});}
 
 /* the model, written out — value or equation, in the same words the manual uses */
@@ -1356,7 +1342,7 @@ const TABS=[
     The shift here is deliberately far smaller than tab 2's: every chart notices a huge shift
     at once, so a huge shift cannot tell them apart. */
  {name:'\\text{3. Detection}',
-  goal:'\\text{Method pinned to Regression on flow. Three rules, same false-alarm rate — which speaks first?}'}];
+  goal:'\\text{Method pinned to Regression on flow. Three rules, same false-alarm rate — read }\\text{ARL}_1\\text{, the mean wait to the first alarm.}'}];
 
 function paint(name,v){document.querySelectorAll('.seg[data-for="'+name+'"] button').forEach(function(b){
   const on=b.getAttribute('data-val')===String(v);
@@ -1371,7 +1357,6 @@ function syncRows(){
   /* the rules tab pins the method to Regression on flow for good -- a control nobody can
      press is furniture, so the row is OFF there, and the goal line names the pinned method */
   set('c-model',tab===T_CHART?'hide':'live');
-  set('c-persist',tab===T_HIST?'hide':'live');
   document.getElementById('resetBtn').style.display='';
   set('c-chart',tab===T_CHART?'live':'hide');
   set('c-cfsize',tab===T_CHART?'live':'hide');
