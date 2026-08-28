@@ -1299,7 +1299,8 @@ function table(){
        false alarms as EPISODES, and latched-vs-flickering after the first alarm */
     [['\\text{Control chart}', 0],
      ['\\text{ARL}_1\\ \\text{(first alarm, h)}', 1],
-     ['\\text{false alarms}', 1]].forEach(function(h){
+     ['\\text{false alarms, 24 runs}', 1],
+     ['\\text{missed detection}', 1]].forEach(function(h){
        const e = th(h[0]); if (h[1]) e.style.textAlign = 'right'; thr.appendChild(e);});
     const AV = avgChart();
     const delays = CHART_ORDER.map(function(w){return AV[w].delay === null ? Infinity : AV[w].delay;});
@@ -1311,7 +1312,8 @@ function table(){
       tr.appendChild(th('\\text{' + CHARTNAME[w] + '}' + (win ? '\\ \\bigstar' : '')));
       tr.appendChild(td(x.delay === null ? '\\text{never}' : x.delay.toFixed(1),
                         x.delay === null ? 'bad' : (win ? 'win' : '')));
-      tr.appendChild(td(x.ep.toFixed(2), x.ep > 0.005 ? 'bad' : ''));
+      tr.appendChild(td(String(x.epTot), x.epTot > 0 ? 'bad' : ''));
+      tr.appendChild(td((24 - x.fires) + '/24', x.fires < 24 ? 'bad' : ''));
       tbb.appendChild(tr);});
     return;}
   const R=ranking();
@@ -1326,13 +1328,14 @@ function table(){
     :[['\\text{Method}', 0],
       ['\\text{control limit},\\ ^\\circ\\text{C}', 1],
       ['\\text{first alarm, h}', 1],
-      ['\\text{false alarms}', 1]];
+      ['\\text{false alarms, 24 runs}', 1],
+      ['\\text{missed detection}', 1]];
   /* the header of a number column is right-aligned like the number under it */
   cols.forEach(function(h){const e=th(h[0]);if(h[1])e.style.textAlign='right';thr.appendChild(e);});
   const AV=(tab===T_SERVICE)?avgService():null;
   let starK=null;
   if(AV){let bv=-1e9;[1,2,3,4,5].forEach(function(k){const a=AV[k];
-    const v=a.delay===null?-1e9:1000-a.delay-a.ep*0.001;
+    const v=a.delay===null?-1e9:1000-a.delay-a.epTot*0.001;
     if(v>bv){bv=v;starK=k;}});if(AV[starK].delay===null)starK=null;}
   [1,2,3,4,5].forEach(function(k){const M=calc(k),tr=document.createElement('tr');
     if(k===model)tr.className='sel';
@@ -1353,7 +1356,8 @@ function table(){
       tr.appendChild(td(M.limitC.toFixed(2),k===1?'bad':''));
       tr.appendChild(td(a.delay===null?'\\text{never}':a.delay.toFixed(1),
                         a.delay===null?'bad':(k===starK?'win':'')));
-      tr.appendChild(td(a.ep.toFixed(2),a.ep>0.005?'bad':''));}
+      tr.appendChild(td(String(a.epTot),a.epTot>0?'bad':''));
+      tr.appendChild(td((24-a.fires)+'/24',a.fires<24?'bad':''));}
     tbb.appendChild(tr);});}
 
 /* the model, written out — value or equation, in the same words the manual uses */
@@ -1426,7 +1430,8 @@ function avgService(){const S0=seed,A={};
   seed=S0;regen();
   const mean=function(v){return v.length?v.reduce(function(x,y){return x+y;},0)/v.length:null;};
   const out={};[1,2,3,4,5].forEach(function(k){
-    out[k]={delay:mean(A[k].d),ep:mean(A[k].ep),fires:A[k].d.length};});
+    out[k]={delay:mean(A[k].d),
+      epTot:A[k].ep.reduce(function(x,y){return x+y;},0),fires:A[k].d.length};});
   return out;}
 function avgChart(){const S0=seed,A={};
   CHART_ORDER.forEach(function(w){A[w]={d:[],ep:[],la:[]};});
@@ -1436,7 +1441,8 @@ function avgChart(){const S0=seed,A={};
   seed=S0;regen();
   const mean=function(v){return v.length?v.reduce(function(x,y){return x+y;},0)/v.length:null;};
   const out={};CHART_ORDER.forEach(function(w){
-    out[w]={delay:mean(A[w].d),ep:mean(A[w].ep),fires:A[w].d.length};});
+    out[w]={delay:mean(A[w].d),
+      epTot:A[w].ep.reduce(function(x,y){return x+y;},0),fires:A[w].d.length};});
   return out;}
 function refresh(){syncRows();regen();draw();table();}
 function setSeg(name,v){
