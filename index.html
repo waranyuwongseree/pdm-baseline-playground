@@ -319,11 +319,10 @@ body.distcls .wrap{height:auto;max-height:900px}   /* เนื้อหาส�
       <div class="drow" id="c-model">
         <span class="dlab" style="flex:0 0 auto;color:#475569;font-size:15px;font-weight:600">\(\text{Method}\)</span>
         <div class="seg" data-for="model">
-          <button type="button" data-val="1">\(1\ \text{Fixed limit }75\)</button>
-          <button type="button" data-val="2">\(2\ \text{Mean baseline}\)</button>
-          <button type="button" data-val="3">\(3\ \text{Moving average }6\text{ h}\)</button>
-          <button type="button" data-val="4">\(4\ \text{AR(1) prev hour}\)</button>
-          <button type="button" data-val="5">\(5\ \text{Regression on flow}\)</button>
+          <button type="button" data-val="2">\(\text{Mean baseline}\)</button>
+          <button type="button" data-val="3">\(\text{Moving average }6\text{ h}\)</button>
+          <button type="button" data-val="4">\(\text{AR(1) prev hour}\)</button>
+          <button type="button" data-val="5">\(\text{Regression on flow}\)</button>
         </div>
       </div>
       <div class="drow" id="c-chart">
@@ -832,8 +831,8 @@ const MACH=[{id:'load',lab:'Swinging load'},{id:'steady',lab:'Steady load'},
 /* EXACTLY the strings printed on the buttons. Before this the buttons said
    "5 Flow (load regression)" and the table said "Flow", so the reader had to translate.
    One name per thing, everywhere: button, figure label, table row, manual. */
-const MODNAME={1:'1 Fixed limit 75',2:'2 Mean baseline',3:'3 Moving average 6 h',
-               4:'4 AR(1) prev hour',5:'5 Regression on flow'};
+const MODNAME={1:'Fixed limit 75',2:'Mean baseline',3:'Moving average 6 h',
+               4:'AR(1) prev hour',5:'Regression on flow'};
 /* the control charts, same rule */
 const CHARTNAME={sh:'Shewhart 3 sd',we:'Western Electric',ew:'EWMA λ 0.2',cu:'CUSUM k 0.5, h 6'};
 /* Tuned so all three raise false alarms at the SAME rate — otherwise "catches it sooner" means
@@ -1058,7 +1057,8 @@ function chartScore(which){
     f1:(prec!==null&&(prec+rec))?2*prec*rec/(prec+rec):0,first:first,
     delay:first===null?null:first-FAULT,ep:ep,latch:latch,arl0:CHART[which].arl0};}
 
-function ranking(){const rows=[1,2,3,4,5].map(function(k){return{k:k,v:calc(k).metric};});
+/* the fixed 75 C threshold is a reference line, not a contestant (RIT 2026-08-28) */
+function ranking(){const rows=[2,3,4,5].map(function(k){return{k:k,v:calc(k).metric};});
   rows.sort(function(a,b){return tab===T_HIST?a.v-b.v:b.v-a.v;});
   const lead=rows[1].v?Math.abs((rows[1].v-rows[0].v)/rows[1].v)*100:(rows[0].v?Infinity:0);
   return{rows:rows,winner:rows[0].k,lead:lead,anyDetects:tab===T_HIST||rows[0].v>0};}
@@ -1326,15 +1326,13 @@ function table(){
       ['\\text{false alarms}', 1]];
   /* the header of a number column is right-aligned like the number under it */
   cols.forEach(function(h){const e=th(h[0]);if(h[1])e.style.textAlign='right';thr.appendChild(e);});
-  [1,2,3,4,5].forEach(function(k){const M=calc(k),tr=document.createElement('tr');
+  [2,3,4,5].forEach(function(k){const M=calc(k),tr=document.createElement('tr');
     if(k===model)tr.className='sel';
     tr.appendChild(th('\\text{'+MODNAME[k]+'}'+(k===R.winner&&R.anyDetects?'\\ \\bigstar':'')));
     if(tab===T_HIST){
       tr.appendChild(td(FORMULA[k],'lft'));
-      if(k===1){tr.appendChild(td('\\text{--}'));tr.appendChild(td('\\text{--}'));}
-      else{
-        tr.appendChild(td(M.sd.toFixed(2),k===R.winner?'win':''));
-        tr.appendChild(td(M.ac1.toFixed(2)));}}
+      tr.appendChild(td(M.sd.toFixed(2),k===R.winner?'win':''));
+      tr.appendChild(td(M.ac1.toFixed(2)));}
     else{
       tr.appendChild(td(M.delay===null?'\\text{never}':String(M.delay),
                         M.delay===null?'bad':(k===R.winner&&R.anyDetects?'win':'')));
