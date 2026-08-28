@@ -348,14 +348,6 @@ body.distcls .wrap{height:auto;max-height:900px}   /* เนื้อหาส�
           <button type="button" data-val="step">\(\text{Step jump}\)</button>
         </div>
       </div>
-      <div class="drow" id="c-cfsize">
-        <span class="dlab" style="flex:0 0 auto;display:flex;align-items:baseline;gap:5px"><span style="color:#475569;font-size:15px;font-weight:600">\(\text{Shift size}\)</span><span style="color:#6b7280;font-size:13px" id="cfU"></span></span>
-        <div class="seg" data-for="cfsize">
-          <button type="button" data-val="0">\(\text{Small}\)</button>
-          <button type="button" data-val="1">\(\text{Medium}\)</button>
-          <button type="button" data-val="2">\(\text{Large}\)</button>
-        </div>
-      </div>
       <div class="row" id="rowRun">
         <button class="primary" id="resetBtn">\(\text{New data}\)</button>
       </div>
@@ -824,8 +816,8 @@ function K(t,el,d){if(!el)return;if(window.katex){try{katex.render(String(t),el,
    the real pump-02 file the workflow reads, which gives the learner a bridge back to it. */
 /* the SIMULATOR timeline is 1440 h; the CLASSROOM pump is the workflow's own 960 h
    (train 480, fault from 768), so the bounds are variables set per data source */
-let N=960,HIST=480,FAULT=720,CLEAN_TEST=FAULT-HIST,FAULT_HOURS=N-FAULT;
-const SWING=240,DAILY=24,LIMZ=3.0;
+let N=96,HIST=48,FAULT=72,CLEAN_TEST=FAULT-HIST,FAULT_HOURS=N-FAULT;
+const SWING=24,DAILY=24,LIMZ=3.0;
 const MACH=[{id:'load',lab:'Swinging load'},{id:'steady',lab:'Steady load'},
             {id:'daily',lab:'Strong daily'},{id:'noise',lab:'No structure'}];
 /* EXACTLY the strings printed on the buttons. Before this the buttons said
@@ -860,7 +852,7 @@ const SIGMA=0.55;
    never does, at Medium it does but 88 hours after the fault started, at Large after 48.
    The deck's sentence is "75 is always right but too late" — with the old sizes the fault never
    got near 75 at all and the fixed limit simply never fired, which is a different claim. */
-const FSZ={drift:[0.03,0.06,0.12],step:[2.0,4.0,8.0]};
+const FSZ={drift:[0.5,0.9,1.5],step:[2.0,4.0,8.0]};
 const MWIN=6;
 /* Fixed axes, measured not guessed: across every machine x every fault x noise 0.5-2x x 8 seeds,
    models 2-5 stay inside -9.1 .. +8.4 C on the history window, so -10..10 holds all four on one
@@ -896,10 +888,13 @@ let flow=[],temp=[];
 function faultOn(){return tab!==T_HIST;}
 /* tab 3 measures its fault in sd of the residual, so it needs the sd before it can build
    the world. sd of the flow model's residual is the noise level by construction. */
-function faultAmp(){return (tab===T_CHART)?CFSZ[faultKind][cfsize]*SIGMA:FSZ[faultKind][fsize];}
+/* the Detection tab carries the same machine fault as Monitoring (it must reach 75 C
+   for lead time to exist); the sd-scaled step shifts stay reachable via LAB.set
+   (fault:'step') for the gate's sweeps (RIT 2026-08-28) */
+function faultAmp(){return (tab===T_CHART&&faultKind==='step')?CFSZ[faultKind][cfsize]*SIGMA:FSZ[faultKind][fsize];}
 
 function regen(){
-  N=960;HIST=480;FAULT=720;
+  N=96;HIST=48;FAULT=72;
   CLEAN_TEST=FAULT-HIST;FAULT_HOURS=N-FAULT;
   const r=PG.rng(seed*7919+31);
   /* unit-variance gaussian (sum of 12 uniforms) — PG.rng's own gauss has sd 0.29, not 1 */
@@ -917,7 +912,7 @@ function regen(){
   if(faultOn()){const A=faultAmp();
     /* on tab 3 a "drift" is stated by where it ENDS UP, not by its slope, because what matters
        there is the size of the shift the chart has to notice */
-    if(faultKind==='drift'){const per=(tab===T_CHART)?A/(N-FAULT):A;
+    if(faultKind==='drift'){const per=A;
       for(let t=FAULT;t<N;t++)temp[t]+=per*(t-FAULT);}
     else for(let t=FAULT;t<N;t++)temp[t]+=A;}}
 
@@ -1151,7 +1146,8 @@ function draw(){
   const M=calc(model);
   /* tab 2 and tab 3 both run the clock to the end; only tab 1 stops at the history */
   const inService=(tab!==T_HIST);
-  const i0=0,i1=inService?N:HIST;
+  /* the scored tabs start the clock at the test onset -- history lives on tab 1 */
+  const i0=inService?HIST:0,i1=inService?N:HIST;
   const L=56,Rr=W-12,T=4,STRIP=17,XAX=30,GAP=9;
   /* the flow panel can be switched off; when it is, its height goes to the other two */
   const showFlow=SHOW.flow;
@@ -1256,8 +1252,7 @@ function draw(){
 
   /* ---- the strips ---- */
   regionStrip(c,A1.PX,regionY,inService
-    ?[{a:i0,b:HIST,name:'history 0–'+HIST,bar:'rgba(91,143,185,0.55)',txt:C.expTx},
-      {a:HIST,b:FAULT,name:'healthy '+HIST+'–'+FAULT,bar:'rgba(107,163,140,0.6)',txt:C.cleanTx},
+    ?[{a:HIST,b:FAULT,name:'healthy '+HIST+'–'+FAULT,bar:'rgba(107,163,140,0.6)',txt:C.cleanTx},
       {a:FAULT,b:i1-1,name:'fault '+FAULT+'–'+N,bar:'rgba(176,122,174,0.7)',txt:C.faultTx}]
     :[{a:i0,b:HIST,name:'history 0–'+HIST,bar:'rgba(91,143,185,0.55)',txt:C.expTx}]);
   /* ONE RULE for the bottom panel, and it does not change again: it always plots the quantity
@@ -1300,10 +1295,11 @@ function table(){
        the deck's ARL pages (RIT 2026-08-28). */
     [['\\text{Control chart}', 0],
      ['\\text{detection delay, h}', 1],
-     ['\\text{false alarms (episodes)}', 1],
+     ['\\text{lead vs 75 °C, h}', 1],
      ['\\text{precision, \\%}', 1],
      ['\\text{recall, \\%}', 1]].forEach(function(h){
        const e = th(h[0]); if (h[1]) e.style.textAlign = 'right'; thr.appendChild(e);});
+    const TC7=t75();
     const sc = CHART_ORDER.map(function(w){return chartScore(w);});
     const delays = sc.map(function(x){return x.delay === null ? Infinity : x.delay;});
     const bestD = Math.min.apply(null, delays);
@@ -1314,7 +1310,8 @@ function table(){
       tr.appendChild(th('\\text{' + CHARTNAME[x.which] + '}' + (win ? '\\ \\bigstar' : '')));
       tr.appendChild(td(x.delay === null ? '\\text{never}' : String(x.delay),
                         x.delay === null ? 'bad' : (win ? 'win' : '')));
-      tr.appendChild(td(String(x.ep), x.ep > 0 ? 'bad' : ''));
+      const xld=(TC7===null||x.first===null)?null:TC7-x.first;
+      tr.appendChild(td(xld===null?'\\text{--}':String(xld),xld!==null&&xld>0?'win':''));
       tr.appendChild(td(x.prec === null ? '\\text{--}' : String(Math.round(100 * x.prec))));
       tr.appendChild(td(String(Math.round(100 * x.rec))));
       tbb.appendChild(tr);});
@@ -1330,7 +1327,6 @@ function table(){
       ['\\text{lag-1 autocorrelation}', 1]]
     :[['\\text{Method}', 0],
       ['\\text{detection delay, h}', 1],
-      ['\\text{false alarms (episodes)}', 1],
       ['\\text{lead vs 75 °C, h}', 1],
       ['\\text{precision, \\%}', 1],
       ['\\text{recall, \\%}', 1]];
@@ -1347,7 +1343,6 @@ function table(){
     else{
       tr.appendChild(td(M.delay===null?'\\text{never}':String(M.delay),
                         M.delay===null?'bad':(k===R.winner&&R.anyDetects?'win':'')));
-      tr.appendChild(td(String(M.ep),M.ep>0?'bad':''));
       const ld=(T7===null||M.first===null)?null:T7-M.first;
       tr.appendChild(td(ld===null?'\\text{--}':String(ld),ld!==null&&ld>0?'win':''));
       tr.appendChild(td(M.prec===null?'\\text{--}':String(Math.round(100*M.prec))));
@@ -1391,10 +1386,9 @@ function syncRows(){
   set('c-model',tab===T_CHART?'hide':'live');
   document.getElementById('resetBtn').style.display='';
   set('c-chart',tab===T_CHART?'live':'hide');
-  set('c-cfsize',tab===T_CHART?'live':'hide');
   /* no fault exists on the history tab — there is no button to press, not a greyed-out one */
   set('c-unit',tab===T_CHART?'hide':'live');
-  set('c-fault',tab===T_HIST?'hide':'live');
+  set('c-fault',tab===T_SERVICE?'live':'hide');
   /* the lever says what the fault DOES, in the unit it is set in and in the height it reaches,
      because "0.06" on its own means nothing to anybody */
   /* the shift-size lever of the chart tab is stated in sd, because that is the unit the charts
@@ -1425,7 +1419,7 @@ function setSeg(name,v){
   else if(name==='persist')persist=+v;
   paint(name,v);refresh();}
 function applyTab(i){tab=i;
-  if(i===T_CHART){model=5;paint('model',5);}   /* the chart tab is about charts, not models */
+  if(i===T_CHART){model=5;paint('model',5);faultKind='drift';}   /* charts race on the machine's own drift */
   document.querySelectorAll('.tabbtn').forEach(function(b,j){b.className='tabbtn'+(j===i?' on':'');});
   K(TABS[i].goal,document.getElementById('hint'),false);
   refresh();}
@@ -1471,9 +1465,11 @@ window.LAB={
     o.sd=+M.sd.toFixed(4);o.bias=+M.bias.toFixed(4);o.ac1=+M.ac1.toFixed(4);
     o.limitC=+M.limitC.toFixed(4);o.limitZ=M.limitZ;
     if(tab===T_CHART){o.chart=chart;o.shift=CFSZ[faultKind][cfsize];o.charts={};
+      const TC7=t75();o.t75=TC7;
       CHART_ORDER.forEach(function(w){const x=chartScore(w);
         o.charts[w]={arl0:x.arl0,TP:x.TP,FP:x.FP,prec:x.prec===null?null:+x.prec.toFixed(4),
                      rec:+x.rec.toFixed(4),f1:+x.f1.toFixed(4),first:x.first,
+                     t75lead:(TC7===null||x.first===null)?null:TC7-x.first,
                      delay:x.delay,ep:x.ep,latch:x.latch,
                      limit:+x.limit.toFixed(4)};});
       const me=o.charts[chart];o.TP=me.TP;o.FP=me.FP;o.rec=me.rec;o.f1=me.f1;o.first=me.first;}
