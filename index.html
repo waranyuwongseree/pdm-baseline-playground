@@ -1300,7 +1300,9 @@ function table(){
        the deck's ARL pages (RIT 2026-08-28). */
     [['\\text{Control chart}', 0],
      ['\\text{detection delay, h}', 1],
-     ['\\text{false alarms (episodes)}', 1]].forEach(function(h){
+     ['\\text{false alarms (episodes)}', 1],
+     ['\\text{precision, \\%}', 1],
+     ['\\text{recall, \\%}', 1]].forEach(function(h){
        const e = th(h[0]); if (h[1]) e.style.textAlign = 'right'; thr.appendChild(e);});
     const sc = CHART_ORDER.map(function(w){return chartScore(w);});
     const delays = sc.map(function(x){return x.delay === null ? Infinity : x.delay;});
@@ -1313,6 +1315,8 @@ function table(){
       tr.appendChild(td(x.delay === null ? '\\text{never}' : String(x.delay),
                         x.delay === null ? 'bad' : (win ? 'win' : '')));
       tr.appendChild(td(String(x.ep), x.ep > 0 ? 'bad' : ''));
+      tr.appendChild(td(x.prec === null ? '\\text{--}' : String(Math.round(100 * x.prec))));
+      tr.appendChild(td(String(Math.round(100 * x.rec))));
       tbb.appendChild(tr);});
     return;}
   const R=ranking();
@@ -1327,7 +1331,9 @@ function table(){
     :[['\\text{Method}', 0],
       ['\\text{detection delay, h}', 1],
       ['\\text{false alarms (episodes)}', 1],
-      ['\\text{lead vs 75 °C, h}', 1]];
+      ['\\text{lead vs 75 °C, h}', 1],
+      ['\\text{precision, \\%}', 1],
+      ['\\text{recall, \\%}', 1]];
   /* the header of a number column is right-aligned like the number under it */
   cols.forEach(function(h){const e=th(h[0]);if(h[1])e.style.textAlign='right';thr.appendChild(e);});
   const T7=(tab===T_SERVICE)?t75():null;
@@ -1343,7 +1349,9 @@ function table(){
                         M.delay===null?'bad':(k===R.winner&&R.anyDetects?'win':'')));
       tr.appendChild(td(String(M.ep),M.ep>0?'bad':''));
       const ld=(T7===null||M.first===null)?null:T7-M.first;
-      tr.appendChild(td(ld===null?'\\text{--}':String(ld),ld!==null&&ld>0?'win':''));}
+      tr.appendChild(td(ld===null?'\\text{--}':String(ld),ld!==null&&ld>0?'win':''));
+      tr.appendChild(td(M.prec===null?'\\text{--}':String(Math.round(100*M.prec))));
+      tr.appendChild(td(String(Math.round(100*M.rec))));}
     tbb.appendChild(tr);});}
 
 /* the model, written out — value or equation, in the same words the manual uses */
