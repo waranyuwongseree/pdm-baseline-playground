@@ -235,7 +235,7 @@ function classDecode(e){const D='0123456789abcdefghijklmnopqrstuvwxyz';const o=[
 
 </script>
 <style>
-  :root{--panel-h:760px}  /* UD trap 4: ค่าเดียว ทุก tab สูงเท่ากัน (แถวคันโยกมากที่สุด = tab 2) */
+  :root{--panel-h:618px}  /* UD trap 4: ค่าเดียว ทุก tab สูงเท่ากัน (แถวคันโยกมากที่สุด = tab 2) */
   .pg .layout>.stage{align-self:start}
   /* UD 1.2: ตรึงความสูงที่คอลัมน์โปร่งใส (.rail) ไม่ใช่การ์ดขาว — การ์ดจึงหดพอดีเนื้อหา */
   .pg .layout>.rail{grid-column:2;min-width:0;align-self:start;display:flex;flex-direction:column;align-items:stretch;min-height:var(--panel-h)}
@@ -251,7 +251,8 @@ function classDecode(e){const D='0123456789abcdefghijklmnopqrstuvwxyz';const o=[
   .pg .panel .seg[data-for="model"] button:nth-child(2n){border-left:1px solid #e6e6e0!important}
   .pg .panel .seg[data-for="machine"] button:nth-child(n+3),
   .pg .panel .seg[data-for="model"] button:nth-child(n+3){border-top:1px solid #e6e6e0!important}
-  .pg .panel .seg[data-for="model"] button:nth-child(5){grid-column:1 / -1;border-left:0!important}
+  .pg .panel .seg[data-for="model"] button:nth-child(5),
+  .pg .panel .seg[data-for="machine"] button:nth-child(5){grid-column:1 / -1;border-left:0!important}
   .pg .panel .seg[data-for="src"],.pg .panel .seg[data-for="persist"]{
     display:grid;grid-template-columns:1fr 1fr;width:100%;min-width:0;
     border:1px solid #e6e6e0;border-radius:8px;overflow:hidden}
@@ -325,13 +326,6 @@ function classDecode(e){const D='0123456789abcdefghijklmnopqrstuvwxyz';const o=[
     </div>
     <div class="rail">
     <div class="panel">
-      <div class="drow" id="c-src">
-        <span class="dlab" style="flex:0 0 auto;color:#475569;font-size:15px;font-weight:600">\(\text{Data}\)</span>
-        <div class="seg" data-for="src">
-          <button type="button" data-val="sim">\(\text{Simulator}\)</button>
-          <button type="button" data-val="class">\(\text{Classroom pump}\)</button>
-        </div>
-      </div>
       <div class="drow" id="c-scen">
         <span class="dlab" style="flex:0 0 auto;color:#475569;font-size:15px;font-weight:600">\(\text{Scenario}\)</span>
         <div class="seg" data-for="scen">
@@ -349,6 +343,7 @@ function classDecode(e){const D='0123456789abcdefghijklmnopqrstuvwxyz';const o=[
           <button type="button" data-val="1">\(\text{Steady load}\)</button>
           <button type="button" data-val="2">\(\text{Strong daily}\)</button>
           <button type="button" data-val="3">\(\text{No structure}\)</button>
+          <button type="button" data-val="class">\(\text{Classroom pump}\)</button>
         </div>
       </div>
       <div class="drow" id="c-model">
@@ -375,12 +370,6 @@ function classDecode(e){const D='0123456789abcdefghijklmnopqrstuvwxyz';const o=[
           <button type="button" data-val="z">\(z\text{-score}\)</button>
           <button type="button" data-val="c">\(^\circ\text{C}\)</button>
         </div>
-      </div>
-      <div class="drow" id="c-show" style="flex-direction:column;align-items:stretch;gap:2px">
-        <span class="dlab" style="color:#475569;font-size:15px;font-weight:600">\(\text{Show}\)</span>
-        <label class="chk"><input type="checkbox" id="sFlow" checked> \(\text{flow}\)</label>
-        <label class="chk"><input type="checkbox" id="sExp" checked> \(\text{expected}\)</label>
-        <label class="chk"><input type="checkbox" id="s75" checked> \(75^\circ\text{C \text{limit}}\)</label>
       </div>
       <div class="drow" id="c-fault">
         <span class="dlab" style="flex:0 0 auto;color:#475569;font-size:15px;font-weight:600">\(\text{Fault}\)</span>
@@ -1401,11 +1390,9 @@ function paint(name,v){document.querySelectorAll('.seg[data-for="'+name+'"] butt
 function syncRows(){
   const set=function(id,st){const e=document.getElementById(id);
     e.classList.toggle('off',st==='hide');e.classList.toggle('lock',st==='lock');};
-  set('c-src','live');
   /* classroom = the recorded file: no machine to pick, no fault to inject, no new data --
      those controls are OFF there, not greyed (off = does not exist in this experiment) */
   set('c-scen',src==='class'?'live':'hide');
-  set('c-machine',src==='class'?'hide':'live');
   /* the rules tab pins the method to Regression on flow for good -- a control nobody can
      press is furniture, so the row is OFF there, and the goal line names the pinned method */
   set('c-model',tab===T_CHART?'hide':'live');
@@ -1415,7 +1402,6 @@ function syncRows(){
   set('c-cfsize',(tab===T_CHART&&src!=='class')?'live':'hide');
   /* no fault exists on the history tab — there is no button to press, not a greyed-out one */
   set('c-unit',tab===T_CHART?'hide':'live');
-  set('c-show','live');
   set('c-fault',(tab===T_HIST||src==='class')?'hide':'live');
   set('c-fsize',(tab===T_SERVICE&&src!=='class')?'live':'hide');
   /* the lever says what the fault DOES, in the unit it is set in and in the height it reaches,
@@ -1442,7 +1428,8 @@ function setSeg(name,v){
              chart:'c-chart',cfsize:'c-cfsize',unit:'c-unit',
              src:'c-src',scen:'c-scen',persist:'c-persist'}[name];
   if(document.getElementById(row).classList.contains('lock'))return;
-  if(name==='machine')mach=+v; else if(name==='model')model=+v;  else if(name==='fault')faultKind=v; else if(name==='fsize')fsize=+v;
+  if(name==='machine'){if(v==='class'){src='class';}else{src='sim';mach=+v;}}
+  else if(name==='model')model=+v;  else if(name==='fault')faultKind=v; else if(name==='fsize')fsize=+v;
   else if(name==='chart')chart=v; else if(name==='cfsize')cfsize=+v;
   else if(name==='unit')unit=v;
   else if(name==='src')src=v; else if(name==='scen')scen=v;
@@ -1479,9 +1466,6 @@ TABS.forEach(function(T,i){const b=document.createElement('button');b.className=
   paint(nm,{machine:mach,model:model,fault:faultKind,fsize:fsize,
             chart:chart,cfsize:cfsize,unit:unit,
             src:src,scen:scen,persist:persist}[nm]);});
-[['sFlow','flow'],['sExp','exp'],['s75','l75']].forEach(function(pr){
-  document.getElementById(pr[0]).addEventListener('change',function(e){
-    SHOW[pr[1]]=e.target.checked;refresh();});});
 applyTab(T_HIST);
 
 window.LAB={
@@ -1521,18 +1505,15 @@ window.LAB={
     if(o.tab!=null)applyTab(o.tab);
     if(o.machine!=null){const i=typeof o.machine==='number'?o.machine
       :MACH.findIndex(function(x){return x.id===o.machine;});
-      if(i>=0){mach=i;paint('machine',i);}}
+      if(i>=0){mach=i;src='sim';paint('machine',i);}}
     if(o.model!=null){model=+o.model;paint('model',model);}
     if(o.fault!=null){faultKind=o.fault;paint('fault',faultKind);}
     if(o.fsize!=null){fsize=+o.fsize;paint('fsize',fsize);}
     if(o.chart!=null){chart=o.chart;paint('chart',chart);}
     if(o.cfsize!=null){cfsize=+o.cfsize;paint('cfsize',cfsize);}
     if(o.unit!=null){unit=o.unit;paint('unit',unit);}
-    if(o.show!=null){Object.keys(o.show).forEach(function(k){SHOW[k]=!!o.show[k];});
-      document.getElementById('sFlow').checked=SHOW.flow;
-      document.getElementById('sExp').checked=SHOW.exp;
-      document.getElementById('s75').checked=SHOW.l75;}
-    if(o.src!=null){src=o.src;paint('src',src);}
+    if(o.show!=null){Object.keys(o.show).forEach(function(k){SHOW[k]=!!o.show[k];});}
+    if(o.src!=null){src=o.src;paint('machine',src==='class'?'class':mach);}
     if(o.scen!=null){scen=o.scen;paint('scen',scen);}
     if(o.persist!=null){persist=+o.persist;paint('persist',persist);}
     if(o.seed!=null)seed=+o.seed;
