@@ -272,9 +272,9 @@ body.distcls .wrap{height:auto;max-height:900px}   /* เนื้อหาส�
       <div class="drow" id="c-machine">
         <span class="dlab" style="flex:0 0 auto;color:#475569;font-size:15px;font-weight:600">\(\text{Machine}\)</span>
         <div class="seg" data-for="machine">
-          <button type="button" data-val="levels">\(\text{Two levels, no driver}\)</button>
-          <button type="button" data-val="load">\(\text{Modes follow load}\)</button>
           <button type="button" data-val="one">\(\text{One mode}\)</button>
+          <button type="button" data-val="load">\(\text{Two modes, driven by load}\)</button>
+          <button type="button" data-val="levels">\(\text{Two modes, no driver}\)</button>
         </div>
       </div>
       <div class="drow" id="c-k">
@@ -765,7 +765,7 @@ const T_MODE=0,T_BASE=1,T_MON=2;
 const C={cl:['#33618D','#1E7A56','#C07E00','#8E5AA8'],
          data:'#6E93B8',exp:'#1E7A56',lim:'#B0503A',alarm:'#C07E00',mark:'#B0503A',
          cen:'#1F2A37',ax:'#94a3b8',axtx:'#64748b',grid:'#eef1f5',fault:'#B07AAE'};
-let tab=T_MODE,mach='levels',K=2,base='mode',seed=1;
+let tab=T_MODE,mach='one',K=2,base='mode',seed=1;
 let FLOW=[],VIB=[],TEMP=[],MODE=[];
 
 function K_(t,el,d){if(!el)return;if(window.katex){try{katex.render(String(t),el,{throwOnError:false,displayMode:!!d});return;}catch(e){}}el.textContent=t;}
@@ -781,11 +781,15 @@ function sdOf(a){const m=mean(a);let s=0,n=0;for(const v of a){if(!ok(v))continu
    OVERLAP on purpose -- that is what stops regression on flow from seeing the difference. */
 /* Four machines, in the order Day 4 teaches them.
 
-     levels   Session 1's own file: two levels and nothing driving them. Only a baseline that
-              knows which level an hour belongs to can be right in both.
-     load     the modes ARE load levels: more flow, more heat -- and Day 3's regression is
-              still the best answer, which is the point of this rung.
-     one      the control: a machine with one mode, where splitting buys nothing. */
+   They are laid out in the order the buttons carry, and that order is the argument: each
+   rung needs the day's new tool a little more than the one before it.
+
+     one      Day 3's world -- one mode, one baseline, and nothing new to do.
+     load     two modes, but they ARE load levels: more flow, more heat, so Day 3's
+              regression still explains them and still wins. The tool is not needed yet.
+     levels   Session 1's own file: two levels with nothing driving them. There is nothing to
+              regress on, one mean is wrong in both modes, and only a baseline that knows
+              which mode an hour belongs to can be right. This is what the day is for. */
 const MODEDEF={
   levels:{n:2,fsep:0,vsep:0,tsep:8},
   load:  {n:2,fsep:16,vsep:0.9,tsep:0},
