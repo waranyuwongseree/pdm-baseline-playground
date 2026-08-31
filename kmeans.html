@@ -237,12 +237,8 @@ body.distcls .wrap{height:auto;max-height:900px}   /* เนื้อหาส�
   .pg .panel .seg[data-for="k"] button:nth-child(2n){border-left:1px solid #e6e6e0!important}
   .pg .panel .seg[data-for="machine"] button:nth-child(n+3),
   .pg .panel .seg[data-for="k"] button:nth-child(n+3){border-top:1px solid #e6e6e0!important}
-  .pg .panel .seg[data-for="con"]{
-    display:grid;grid-template-columns:1fr 1fr;width:100%;min-width:0;
-    border:1px solid #e6e6e0;border-radius:8px;overflow:hidden}
-  .pg .panel .seg[data-for="con"] button{
-    font-size:14px;padding:6px 3px;cursor:pointer;border:0!important;text-align:center}
-  .pg .panel .seg[data-for="con"] button+button{border-left:1px solid #e6e6e0!important}
+  /* the third machine takes the full width, like Day 3's fifth method */
+  .pg .panel .seg[data-for="machine"] button:nth-child(3){grid-column:1 / -1;border-left:0!important}
   .pg .panel .seg[data-for="base"]{
     display:grid;grid-template-columns:1fr;width:100%;min-width:0;
     border:1px solid #e6e6e0;border-radius:8px;overflow:hidden}
@@ -278,7 +274,6 @@ body.distcls .wrap{height:auto;max-height:900px}   /* เนื้อหาส�
         <div class="seg" data-for="machine">
           <button type="button" data-val="levels">\(\text{Two levels, no driver}\)</button>
           <button type="button" data-val="load">\(\text{Modes follow load}\)</button>
-          <button type="button" data-val="overlap">\(\text{Modes overlap in flow}\)</button>
           <button type="button" data-val="one">\(\text{One mode}\)</button>
         </div>
       </div>
@@ -289,13 +284,6 @@ body.distcls .wrap{height:auto;max-height:900px}   /* เนื้อหาส�
           <button type="button" data-val="2">\(2\)</button>
           <button type="button" data-val="3">\(3\)</button>
           <button type="button" data-val="4">\(4\)</button>
-        </div>
-      </div>
-      <div class="drow" id="c-con">
-        <span class="dlab" style="flex:0 0 auto;color:#475569;font-size:15px;font-weight:600">\(\text{Cluster on}\)</span>
-        <div class="seg" data-for="con">
-          <button type="button" data-val="temp">\(\text{temperature alone}\)</button>
-          <button type="button" data-val="op">\(\text{flow + vibration}\)</button>
         </div>
       </div>
       <div class="drow" id="c-base">
@@ -777,7 +765,7 @@ const T_MODE=0,T_BASE=1,T_MON=2;
 const C={cl:['#33618D','#1E7A56','#C07E00','#8E5AA8'],
          data:'#6E93B8',exp:'#1E7A56',lim:'#B0503A',alarm:'#C07E00',mark:'#B0503A',
          cen:'#1F2A37',ax:'#94a3b8',axtx:'#64748b',grid:'#eef1f5',fault:'#B07AAE'};
-let tab=T_MODE,mach='levels',K=2,con='temp',base='mode',seed=1;
+let tab=T_MODE,mach='levels',K=2,base='mode',seed=1;
 let FLOW=[],VIB=[],TEMP=[],MODE=[];
 
 function K_(t,el,d){if(!el)return;if(window.katex){try{katex.render(String(t),el,{throwOnError:false,displayMode:!!d});return;}catch(e){}}el.textContent=t;}
@@ -793,18 +781,14 @@ function sdOf(a){const m=mean(a);let s=0,n=0;for(const v of a){if(!ok(v))continu
    OVERLAP on purpose -- that is what stops regression on flow from seeing the difference. */
 /* Four machines, in the order Day 4 teaches them.
 
-     levels   Session 1's own file: two levels and nothing driving them. Flow and vibration
-              are the same in both modes, so the operating point cannot tell them apart --
-              only the watched variable can.
-     load     the modes ARE load levels: more flow, more heat. Day 3's regression still works
-              here, which is exactly why this rung comes before the next one.
-     overlap  Session 2's case: the modes overlap in flow, one running hotter than the other
-              at the same flow, so flow alone cannot explain the offset. Vibration can.
+     levels   Session 1's own file: two levels and nothing driving them. Only a baseline that
+              knows which level an hour belongs to can be right in both.
+     load     the modes ARE load levels: more flow, more heat -- and Day 3's regression is
+              still the best answer, which is the point of this rung.
      one      the control: a machine with one mode, where splitting buys nothing. */
 const MODEDEF={
   levels:{n:2,fsep:0,vsep:0,tsep:8},
   load:  {n:2,fsep:16,vsep:0.9,tsep:0},
-  overlap:{n:2,fsep:3.5,vsep:2.2,tsep:7},
   one:   {n:1,fsep:0,vsep:0,tsep:0}};
 function regen(){
   const r=PG.rng(seed*7919+29);
@@ -828,16 +812,13 @@ function regen(){
    cluster built on it would move with the fault and hide the very thing we are looking for.
    Centres are fitted on the healthy history only, then applied to every hour: Phase I / Phase
    II, the same rule as every baseline in this course. */
-/* Session 1 clusters the WATCHED variable (temperature alone); Session 2 clusters the
-   OPERATING POINT (flow and vibration). Both are standardised on the healthy history, and
-   both are fitted there only -- the fault must never move a centre. */
+/* Session 1's rule, and the only one this page uses: cluster the WATCHED column itself,
+   standardised on the healthy history and fitted there only -- the fault must never be
+   allowed to move a centre. */
 function opPoints(){
-  const f=FLOW.slice(0,HIST),v=VIB.slice(0,HIST),c=TEMP.slice(0,HIST);
-  const mf=mean(f),sf=sdOf(f)||1,mv=mean(v),sv=sdOf(v)||1,mc=mean(c),sc=sdOf(c)||1;
-  const z=[];
-  for(let i=0;i<N;i++)z.push(con==='temp'?[(TEMP[i]-mc)/sc,0]
-                                         :[(FLOW[i]-mf)/sf,(VIB[i]-mv)/sv]);
-  return {P:z,mf:mf,sf:sf,mv:mv,sv:sv,mc:mc,sc:sc};
+  const c=TEMP.slice(0,HIST),mc=mean(c),sc=sdOf(c)||1;
+  const z=[];for(let i=0;i<N;i++)z.push([(TEMP[i]-mc)/sc,0]);
+  return {P:z,mc:mc,sc:sc};
 }
 function dist2(a,b){const dx=a[0]-b[0],dy=a[1]-b[1];return dx*dx+dy*dy;}
 function nearest(p,C0){let bi=0,bd=Infinity;
@@ -982,37 +963,23 @@ function draw(){
     c.restore();
     note(c,box1,'healthy history  ·  each hour coloured by the mode it was put in  ·  '+
       'dashed lines are the modes\' means');
-    if(con==='temp'){
-      /* Session 1's second view: the shape of the watched variable on its own */
-      const lo=ry1[0],hi=ry1[1],B_=26,cnt2=new Array(B_).fill(0),by=[];
-      for(let j=0;j<B_;j++)by.push([]);
-      for(let i=0;i<HIST;i++){
-        const b=Math.max(0,Math.min(B_-1,Math.floor((TEMP[i]-lo)/(hi-lo)*B_)));
-        cnt2[b]++;by[b].push(km.train[i]);}
-      const A2=axes(c,box2,lo,hi,0,Math.max.apply(null,cnt2)*1.15+1,'temperature, °C','hours');
-      const w=(box2.r-box2.l)/B_;
-      for(let j=0;j<B_;j++){
-        if(!cnt2[j])continue;
-        const maj=by[j].sort()[Math.floor(by[j].length/2)];
-        c.fillStyle=C.cl[maj%C.cl.length];c.globalAlpha=0.75;
-        const x=A2.PX(lo+(j+0.5)*(hi-lo)/B_)-w*0.42,y=A2.PY(cnt2[j]);
-        c.fillRect(x,y,w*0.84,A2.PY(0)-y);}
-      c.globalAlpha=1;
-      note(c,box2,'the shape of temperature alone — this is what the clustering read');
-    }else{
-      const rx=pad(FLOW.slice(0,HIST)),ry=pad(VIB.slice(0,HIST));
-      const A2=axes(c,box2,rx[0],rx[1],ry[0],ry[1],'flow (m³/h)','vibration (mm/s)');
-      for(let i=0;i<HIST;i++){
-        c.fillStyle=C.cl[km.train[i]%C.cl.length];c.globalAlpha=0.8;
-        c.beginPath();c.arc(A2.PX(FLOW[i]),A2.PY(VIB[i]),3.2,0,6.284);c.fill();}
-      c.globalAlpha=1;
-      km.cen.forEach(function(p){
-        const x=A2.PX(p[0]*Z.sf+Z.mf),y=A2.PY(p[1]*Z.sv+Z.mv);
-        c.strokeStyle='#fff';c.lineWidth=4.4;
-        c.beginPath();c.moveTo(x-7,y-7);c.lineTo(x+7,y+7);c.moveTo(x+7,y-7);c.lineTo(x-7,y+7);c.stroke();
-        c.strokeStyle=C.cen;c.lineWidth=2.4;
-        c.beginPath();c.moveTo(x-7,y-7);c.lineTo(x+7,y+7);c.moveTo(x+7,y-7);c.lineTo(x-7,y+7);c.stroke();});
-      note(c,box2,'the operating point — this is what the clustering read');}
+    /* the second view: the same hours as a shape, which is what the clustering actually
+       read (Session 1's Histogram node) */
+    {const lo=ry1[0],hi=ry1[1],B_=26,cnt2=new Array(B_).fill(0),by=[];
+     for(let j=0;j<B_;j++)by.push([]);
+     for(let i=0;i<HIST;i++){
+       const b=Math.max(0,Math.min(B_-1,Math.floor((TEMP[i]-lo)/(hi-lo)*B_)));
+       cnt2[b]++;by[b].push(km.train[i]);}
+     const A2=axes(c,box2,lo,hi,0,Math.max.apply(null,cnt2)*1.15+1,'temperature, °C','hours');
+     const w=(box2.r-box2.l)/B_;
+     for(let j=0;j<B_;j++){
+       if(!cnt2[j])continue;
+       const maj=by[j].sort()[Math.floor(by[j].length/2)];
+       c.fillStyle=C.cl[maj%C.cl.length];c.globalAlpha=0.75;
+       const x=A2.PX(lo+(j+0.5)*(hi-lo)/B_)-w*0.42,y=A2.PY(cnt2[j]);
+       c.fillRect(x,y,w*0.84,A2.PY(0)-y);}
+     c.globalAlpha=1;
+     note(c,box2,'the same hours as a shape — this is what the clustering read');}
     const s=silhouette(km.Z.P.slice(0,HIST),km.train,K);
     return;}
   const b=baseline(base,K);
@@ -1122,21 +1089,19 @@ function syncRows(){
     e.classList.toggle('off',st==='hide');e.classList.toggle('lock',st==='lock');};
   set('c-machine','live');
   set('c-k','live');            /* k is the lever of the whole day: it reaches detection delay */
-  set('c-con','live');          /* what you cluster on decides whether the modes are findable */
   set('c-base',tab===T_MODE?'hide':'live');
 }
 function refresh(){syncRows();regen();draw();table();}
 function setSeg(name,v){
-  const row={machine:'c-machine',k:'c-k',con:'c-con',base:'c-base'}[name];
+  const row={machine:'c-machine',k:'c-k',base:'c-base'}[name];
   if(document.getElementById(row).classList.contains('lock'))return;
-  if(name==='machine')mach=v; else if(name==='k')K=+v;
-  else if(name==='con')con=v; else if(name==='base')base=v;
+  if(name==='machine')mach=v; else if(name==='k')K=+v; else if(name==='base')base=v;
   paint(name,v);refresh();}
 function applyTab(i){tab=i;
   document.querySelectorAll('.tabbtn').forEach(function(b,j){b.className='tabbtn'+(j===i?' on':'');});
   refresh();}
 const TABS=[{name:'\\text{1. Modes}'},{name:'\\text{2. Baseline}'},{name:'\\text{3. Monitoring}'}];
-['machine','k','con','base'].forEach(function(nm){
+['machine','k','base'].forEach(function(nm){
   document.querySelectorAll('.seg[data-for="'+nm+'"] button').forEach(function(b){
     b.addEventListener('click',function(){setSeg(nm,b.getAttribute('data-val'));});});});
 document.getElementById('resetBtn').addEventListener('click',function(){seed++;refresh();});
@@ -1145,13 +1110,12 @@ const tb=document.getElementById('tabs');
 TABS.forEach(function(T,i){const b=document.createElement('button');b.className='tabbtn';
   (window.katex?katex.render(T.name,b,{throwOnError:false}):(b.textContent=T.name));
   b.onclick=function(){applyTab(i);};tb.appendChild(b);});
-['machine','k','con','base'].forEach(function(nm){
-  paint(nm,{machine:mach,k:K,con:con,base:base}[nm]);});
+['machine','k','base'].forEach(function(nm){paint(nm,{machine:mach,k:K,base:base}[nm]);});
 applyTab(T_MODE);
 
 window.LAB={
   read:function(){
-    const o={tab:tab,machine:mach,k:K,con:con,base:base,seed:seed,
+    const o={tab:tab,machine:mach,k:K,base:base,seed:seed,
              n:N,hist:HIST,faultStart:FAULT,limitC:LIMIT_C,modes:{},baselines:{}};
     for(const k of [1,2,3,4]){
       const km=kmeans(k),s=(k<2)?null:silhouette(km.Z.P.slice(0,HIST),km.train,k);
@@ -1165,9 +1129,10 @@ window.LAB={
                       first:r.first,t75:r.t75};}
     return o;},
   set:function(o){
-    if(o.machine!=null){mach=o.machine;paint('machine',mach);}
+    /* a name this page does not have is ignored, not obeyed: a caller's typo must not
+       take the figure down */
+    if(o.machine!=null&&MODEDEF[o.machine]){mach=o.machine;paint('machine',mach);}
     if(o.k!=null){K=+o.k;paint('k',K);}
-    if(o.con!=null){con=o.con;paint('con',con);}
     if(o.base!=null){base=o.base;paint('base',base);}
     if(o.seed!=null)seed=+o.seed;
     if(o.tab!=null)applyTab(o.tab); else refresh();}};
