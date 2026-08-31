@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>k-means for operating regimes</title>
+<title>Operating modes and the baseline</title>
 <style>
 /* ============================================================================
  * pg_style.css — shared visual identity for every playground
@@ -228,26 +228,21 @@ body.distcls .wrap{height:auto;max-height:900px}   /* เนื้อหาส�
   .pg .layout>.rail{grid-column:2;min-width:0;align-self:start;display:flex;flex-direction:column;align-items:stretch;min-height:var(--panel-h)}
   .pg .rail>.panel{width:100%;min-width:0;align-self:stretch;min-height:0}
   .pg .canvasbox{height:clamp(320px,54vh,500px)}
-  /* every selector is a grid so all buttons come out the same width — never flex-wrap */
-  .pg .panel .seg[data-for="pattern"],.pg .panel .seg[data-for="k"]{
+  .pg .panel .seg[data-for="machine"],.pg .panel .seg[data-for="k"]{
     display:grid;grid-template-columns:1fr 1fr;width:100%;min-width:0;
     border:1px solid #e6e6e0;border-radius:8px;overflow:hidden}
-  .pg .panel .seg[data-for="pattern"] button,.pg .panel .seg[data-for="k"] button{
+  .pg .panel .seg[data-for="machine"] button,.pg .panel .seg[data-for="k"] button{
     font-size:14px;padding:6px 3px;cursor:pointer;border:0!important;text-align:center}
-  .pg .panel .seg[data-for="pattern"] button:nth-child(2n),
+  .pg .panel .seg[data-for="machine"] button:nth-child(2n),
   .pg .panel .seg[data-for="k"] button:nth-child(2n){border-left:1px solid #e6e6e0!important}
-  .pg .panel .seg[data-for="pattern"] button:nth-child(n+3),
+  .pg .panel .seg[data-for="machine"] button:nth-child(n+3),
   .pg .panel .seg[data-for="k"] button:nth-child(n+3){border-top:1px solid #e6e6e0!important}
-  .pg .panel .seg[data-for="init"],.pg .panel .seg[data-for="step"],
-  .pg .panel .seg[data-for="space"]{
-    display:grid;grid-template-columns:1fr 1fr 1fr;width:100%;min-width:0;
+  .pg .panel .seg[data-for="base"]{
+    display:grid;grid-template-columns:1fr;width:100%;min-width:0;
     border:1px solid #e6e6e0;border-radius:8px;overflow:hidden}
-  .pg .panel .seg[data-for="space"]{grid-template-columns:1fr 1fr}
-  .pg .panel .seg[data-for="init"] button,.pg .panel .seg[data-for="step"] button,
-  .pg .panel .seg[data-for="space"] button{
+  .pg .panel .seg[data-for="base"] button{
     font-size:14px;padding:6px 3px;cursor:pointer;border:0!important;text-align:center}
-  .pg .panel .seg[data-for="init"] button+button,.pg .panel .seg[data-for="step"] button+button,
-  .pg .panel .seg[data-for="space"] button+button{border-left:1px solid #e6e6e0!important}
+  .pg .panel .seg[data-for="base"] button+button{border-top:1px solid #e6e6e0!important}
   .pg .drow.off{display:none!important}
   .pg .drow.lock{opacity:.45;pointer-events:none}
   @media (max-width:820px){
@@ -259,10 +254,10 @@ body.distcls .wrap{height:auto;max-height:900px}   /* เนื้อหาส�
 </style>
 </head>
 <body class="pg">
-<h2 class="sr-only" style="position:absolute;width:1px;height:1px;overflow:hidden">One pump, two sensors, and the question of whether it runs in more than one operating regime. The first tab runs k-means one step at a time so the assign-then-move loop can be watched; the second sweeps k and reads the silhouette to decide how many regimes the data actually supports; the third clusters the same points once in raw units and once after z-scoring, to show that a distance is only as meaningful as the units it is measured in.</h2>
+<h2 class="sr-only" style="position:absolute;width:1px;height:1px;overflow:hidden">One pump that runs in more than one operating mode, and what that does to a baseline. The first tab finds the modes with k-means on the operating point. The second builds the expected temperature three ways on the same healthy history and reads the residual each one leaves. The third lets the clock run into a fault and scores every baseline in the operator's units: hours to the first alarm, hours of warning over the fixed seventy five degree limit, and false alarms while the machine is still healthy.</h2>
 <div class="wrap">
   <div class="hdr">
-    <h1 id="__pgt" data-tex="\text{k-means for operating regimes}">k-means for operating regimes</h1>
+    <h1 id="__pgt" data-tex="\text{Operating modes and the baseline}">Operating modes and the baseline</h1>
     <div class="tabs" id="tabs"></div>
   </div>
   <div class="layout">
@@ -272,49 +267,34 @@ body.distcls .wrap{height:auto;max-height:900px}   /* เนื้อหาส�
     </div>
     <div class="rail">
     <div class="panel">
-      <div class="drow" id="c-pattern">
-        <span class="dlab" style="flex:0 0 auto;color:#475569;font-size:15px;font-weight:600">\(\text{Data pattern}\)</span>
-        <div class="seg" data-for="pattern">
-          <button type="button" data-val="two">\(\text{Two regimes}\)</button>
-          <button type="button" data-val="three">\(\text{Three regimes}\)</button>
-          <button type="button" data-val="blob">\(\text{One blob}\)</button>
-          <button type="button" data-val="band">\(\text{One long band}\)</button>
+      <div class="drow" id="c-machine">
+        <span class="dlab" style="flex:0 0 auto;color:#475569;font-size:15px;font-weight:600">\(\text{Machine}\)</span>
+        <div class="seg" data-for="machine">
+          <button type="button" data-val="two">\(\text{Two modes}\)</button>
+          <button type="button" data-val="three">\(\text{Three modes}\)</button>
+          <button type="button" data-val="one">\(\text{One mode}\)</button>
+          <button type="button" data-val="blur">\(\text{Modes that overlap}\)</button>
         </div>
       </div>
       <div class="drow" id="c-k">
-        <span class="dlab" style="flex:0 0 auto;color:#475569;font-size:15px;font-weight:600">\(k\)</span>
+        <span class="dlab" style="flex:0 0 auto;color:#475569;font-size:15px;font-weight:600">\(\text{Modes assumed }(k)\)</span>
         <div class="seg" data-for="k">
+          <button type="button" data-val="1">\(1\)</button>
           <button type="button" data-val="2">\(2\)</button>
           <button type="button" data-val="3">\(3\)</button>
           <button type="button" data-val="4">\(4\)</button>
-          <button type="button" data-val="5">\(5\)</button>
         </div>
       </div>
-      <div class="drow" id="c-init">
-        <span class="dlab" style="flex:0 0 auto;color:#475569;font-size:15px;font-weight:600">\(\text{First centroids}\)</span>
-        <div class="seg" data-for="init">
-          <button type="button" data-val="rows">\(\text{First }k\text{ rows}\)</button>
-          <button type="button" data-val="plus">\(k\text{-means++}\)</button>
-          <button type="button" data-val="rand">\(\text{Random}\)</button>
-        </div>
-      </div>
-      <div class="drow" id="c-step">
-        <span class="dlab" style="flex:0 0 auto;color:#475569;font-size:15px;font-weight:600">\(\text{Round}\)</span>
-        <div class="seg" data-for="step">
-          <button type="button" data-val="1">\(1\)</button>
-          <button type="button" data-val="2">\(2\)</button>
-          <button type="button" data-val="99">\(\text{until it stops}\)</button>
-        </div>
-      </div>
-      <div class="drow" id="c-space">
-        <span class="dlab" style="flex:0 0 auto;color:#475569;font-size:15px;font-weight:600">\(\text{Distance measured in}\)</span>
-        <div class="seg" data-for="space">
-          <button type="button" data-val="raw">\(\text{Raw units}\)</button>
-          <button type="button" data-val="z">\(z\text{-scores}\)</button>
+      <div class="drow" id="c-base">
+        <span class="dlab" style="flex:0 0 auto;color:#475569;font-size:15px;font-weight:600">\(\text{Baseline}\)</span>
+        <div class="seg" data-for="base">
+          <button type="button" data-val="mean">\(\text{One mean for everything}\)</button>
+          <button type="button" data-val="reg">\(\text{Regression on flow}\)</button>
+          <button type="button" data-val="mode">\(\text{One mean per mode}\)</button>
         </div>
       </div>
       <div class="row" id="rowRun">
-        <button id="resetBtn" title="draw a new random sample of the same machine">\(\text{New data}\)</button>
+        <button id="resetBtn" title="draw a new random week from the same machine">\(\text{New data}\)</button>
       </div>
     </div>
     </div>
@@ -752,163 +732,157 @@ if (typeof document !== 'undefined') (function () {
 </script>
 <script>
 /* ============================================================================================
-   k-MEANS FOR OPERATING REGIMES  ·  Day 4 Session 2 of the KNIME PdM course
-   Built on the Day 3 shell (same rail, same one-figure-one-table stage, same LAB contract).
+   OPERATING MODES AND THE BASELINE  ·  Day 4 of the KNIME PdM course, on the Day 3 shell
 
-   The workflow this page belongs to is Day4_S2_Regime_Clustering: Normalizer (z-score, five
-   sensors) -> k-Means (k = 2, seed 42) -> Silhouette Coefficient, with a sweep over k = 1..4
-   whose only job is to justify the 2 that the workflow locks. This page teaches the three
-   things that sweep cannot show on its own:
+   Day 3 ended with one baseline for one machine. Day 4 starts where that breaks: the pump does
+   not run in one state, it runs in several, and a baseline that averages across them is wrong
+   in every one of them. k-means is not the subject here -- it is the tool that gets the modes
+   back, so that a baseline can be built inside each one.
 
-     tab 1  the loop itself      assign every point to the nearest centroid, move each centroid
-                                 to the mean of its points, repeat until nothing moves
-     tab 2  how many regimes     silhouette and inertia against k -- and the trap that inertia
-                                 always improves with k while silhouette does not
-     tab 3  the units            the same points clustered in raw units and in z-scores; a
-                                 distance is only as meaningful as the units it is measured in
+     tab 1  Modes      k-means on the operating point (flow, vibration): how many modes does
+                       this machine have, and does the silhouette agree with the k you assumed
+     tab 2  Baseline   the same healthy history, three ways to say what the temperature SHOULD
+                       be -- one mean for everything, regression on flow (Day 3's winner), one
+                       mean per mode -- and the residual each one leaves behind
+     tab 3  Monitoring the clock runs into a fault, scored in Day 3's own readings: detection
+                       delay, lead over the fixed 75 C limit, false alarms while still healthy
 
-   Two sensors, not five, because the argument has to be VISIBLE: temperature against vibration
-   is the workflow's own Scatter Plot (node 8). 300 points is the workflow's own Row Sampler.
+   The trap the machine is built around, and the reason Day 3's answer is not enough: the modes
+   OVERLAP IN FLOW. A mode runs hotter than another at the SAME flow, because it is a different
+   valve line-up, not a heavier load. So regression on flow -- the method that won Day 3 --
+   cannot explain the offset either. Only knowing WHICH MODE an hour belongs to fixes it, and
+   that is what the clustering delivers.
+
+   Timeline and vocabulary are Day 3's, deliberately: 96 hours split train 48 / healthy test 24
+   / fault 24, alarm on |z| >= 3 two-sided, and the fixed 75 C limit stays the reference the
+   model has to beat.
    ========================================================================================== */
-const N=300, T_ITER=0, T_K=1, T_SPACE=2;
-const PAT=[['two','Two regimes'],['three','Three regimes'],['blob','One blob'],['band','One long band']];
-const PATNAME={two:'Two regimes',three:'Three regimes',blob:'One blob',band:'One long band'};
-const INITNAME={rows:'First k rows',plus:'k-means++',rand:'Random'};
-/* one colour per cluster -- here the cluster IS the information, so colour carries identity;
-   everything that is not a cluster (axes, centroid marks, text) stays neutral */
-const C={cl:['#33618D','#1E7A56','#C07E00','#8E5AA8','#B0503A'],
-         pt:'#9AA6B2',cen:'#1F2A37',ax:'#94a3b8',axtx:'#64748b',grid:'#eef1f5',
-         good:'#1E7A56',bad:'#B0503A'};
-let tab=T_ITER,pattern='two',K=2,init='rows',step=99,space='z',seed=1;
-let X=[],Y=[],TRUE=[];        /* temp, vibration, and the regime each point really came from */
+const N=96,HIST=48,FAULT=72,LIMZ=3,LIMIT_C=75;
+const BASE=[['mean','One mean for everything'],['reg','Regression on flow'],['mode','One mean per mode']];
+const BNAME={mean:'One mean for everything',reg:'Regression on flow',mode:'One mean per mode'};
+const T_MODE=0,T_BASE=1,T_MON=2;
+const C={cl:['#33618D','#1E7A56','#C07E00','#8E5AA8'],
+         data:'#6E93B8',exp:'#1E7A56',lim:'#B0503A',alarm:'#C07E00',mark:'#B0503A',
+         cen:'#1F2A37',ax:'#94a3b8',axtx:'#64748b',grid:'#eef1f5',fault:'#B07AAE'};
+let tab=T_MODE,mach='two',K=2,base='mode',seed=1;
+let FLOW=[],VIB=[],TEMP=[],MODE=[];
 
 function K_(t,el,d){if(!el)return;if(window.katex){try{katex.render(String(t),el,{throwOnError:false,displayMode:!!d});return;}catch(e){}}el.textContent=t;}
 function ok(v){return v!=null&&isFinite(v);}
 function mean(a){let s=0,n=0;for(const v of a){if(!ok(v))continue;s+=v;n++;}return n?s/n:0;}
-function sd(a){const m=mean(a);let s=0,n=0;for(const v of a){if(!ok(v))continue;s+=(v-m)*(v-m);n++;}
+function sdOf(a){const m=mean(a);let s=0,n=0;for(const v of a){if(!ok(v))continue;s+=(v-m)*(v-m);n++;}
   return n>1?Math.sqrt(s/(n-1)):0;}
 
-/* ---------------- the machine: temperature and vibration of one pump ----------------
-   Two regimes is the pump the course has been reading all along: idle and loaded. Three adds a
-   peak-load regime. One blob has no regimes at all -- and k-means will still hand back k
-   clusters, which is the whole reason the silhouette page exists. One long band is the shape
-   k-means is worst at: a single elongated cloud that it cuts in half across its length. */
+/* ---------------- the machine ----------------
+   Modes come in blocks of hours, not one draw per hour: a pump holds a line-up for a shift and
+   then changes, which is what makes a mode visible in a time series at all. Inside a mode the
+   temperature is 47 + 0.14 x flow; the mode adds its own offset on top. The flows of the modes
+   OVERLAP on purpose -- that is what stops regression on flow from seeing the difference. */
+const OFFS={two:[0,7],three:[0,5,9],one:[0],blur:[0,7]};
 function regen(){
-  const r=PG.rng(seed*7919+13);
+  const r=PG.rng(seed*7919+29);
   const g=function(){let s=0;for(let i=0;i<12;i++)s+=r.next();return s-6;};
-  X=[];Y=[];TRUE=[];
-  for(let i=0;i<N;i++){
-    let t,v,c;
-    if(pattern==='two'){
-      c=(i%10<4)?0:1;
-      t=(c===0?52:68)+(c===0?2.0:2.6)*g();
-      v=(c===0?1.2:3.0)+(c===0?0.24:0.34)*g();
-    }else if(pattern==='three'){
-      c=i%3;
-      t=[52,64,74][c]+2.0*g();
-      v=[1.2,2.6,4.1][c]+0.26*g();
-    }else if(pattern==='blob'){
-      c=0;t=62+4.5*g();v=2.4+0.7*g();
-    }else{                                   /* one long band: temp and vibration move together */
-      c=0;const u=r.next()*2-1;
-      t=62+11*u+1.1*g();
-      v=2.4+1.5*u+0.16*g();
-    }
-    X.push(t);Y.push(v);TRUE.push(c);}
+  const offs=OFFS[mach],nm=offs.length;
+  FLOW=[];VIB=[];TEMP=[];MODE=[];
+  let m=0,left=0;
+  for(let t=0;t<N;t++){
+    if(left<=0){m=Math.floor(r.next()*nm);left=6+Math.floor(r.next()*7);}   /* 6-12 h blocks */
+    left--;
+    const f=100+4.0*g()+(nm>1?m*3.5:0);
+    const vsep=(mach==='blur')?0.45:2.2;      /* how far apart the modes sit in vibration */
+    const v=1.3+m*vsep+0.16*g();
+    let temp=47+0.14*f+offs[m]+0.5*g();
+    if(t>=FAULT)temp+=0.70*(t-FAULT+1);       /* the fault: a slow drift, Day 3's shape */
+    FLOW.push(f);VIB.push(v);TEMP.push(temp);MODE.push(m);}
 }
 
-/* ---------------- the space the distance is measured in ----------------
-   Raw units put temperature (a range of ~25 C) against vibration (a range of ~3 mm/s), so the
-   distance is temperature with a rounding error attached. z-scores give both sensors the same
-   say, which is what the workflow's Normalizer node is for. */
-function points(sp){
-  if(sp==='raw')return X.map(function(t,i){return [t,Y[i]];});
-  const mx=mean(X),sx=sd(X)||1,my=mean(Y),sy=sd(Y)||1;
-  return X.map(function(t,i){return [(t-mx)/sx,(Y[i]-my)/sy];});
+/* ---------------- k-means on the operating point ----------------
+   The clustering reads flow and vibration -- the two sensors that say what the machine is
+   DOING. Temperature is deliberately kept out of it: it is the variable being judged, and a
+   cluster built on it would move with the fault and hide the very thing we are looking for.
+   Centres are fitted on the healthy history only, then applied to every hour: Phase I / Phase
+   II, the same rule as every baseline in this course. */
+function opPoints(){
+  const f=FLOW.slice(0,HIST),v=VIB.slice(0,HIST);
+  const mf=mean(f),sf=sdOf(f)||1,mv=mean(v),sv=sdOf(v)||1;
+  const z=[];for(let i=0;i<N;i++)z.push([(FLOW[i]-mf)/sf,(VIB[i]-mv)/sv]);
+  return {P:z,mf:mf,sf:sf,mv:mv,sv:sv};
 }
 function dist2(a,b){const dx=a[0]-b[0],dy=a[1]-b[1];return dx*dx+dy*dy;}
-
-/* ---------------- k-means, one round at a time ----------------
-   A round is: ASSIGN every point to its nearest centroid, then MOVE every centroid to the mean
-   of the points that chose it. The page can stop after any round, which is the only way to see
-   that the algorithm is two alternating steps and not one black box. */
-function seeds(P,k,how,rng){
-  if(how==='rows')return P.slice(0,k).map(function(p){return p.slice();});   /* KNIME's own rule */
-  if(how==='rand'){const out=[],used={};
-    while(out.length<k){const j=Math.floor(rng.next()*P.length);
-      if(used[j])continue;used[j]=1;out.push(P[j].slice());}
-    return out;}
-  /* k-means++: first centre at random, then each next centre far from the ones already chosen */
-  const out=[P[Math.floor(rng.next()*P.length)].slice()];
-  while(out.length<k){
-    const d=P.map(function(p){let m=Infinity;for(const c of out)m=Math.min(m,dist2(p,c));return m;});
+function nearest(p,C0){let bi=0,bd=Infinity;
+  for(let c=0;c<C0.length;c++){const d=dist2(p,C0[c]);if(d<bd){bd=d;bi=c;}}return bi;}
+function kmeans(k){
+  const Z=opPoints(),train=Z.P.slice(0,HIST);
+  const rng=PG.rng(seed*104729+k*31);
+  let C0=[train[Math.floor(rng.next()*train.length)].slice()];
+  while(C0.length<k){                                   /* k-means++ start */
+    const d=train.map(function(p){let m=Infinity;for(const c of C0)m=Math.min(m,dist2(p,c));return m;});
     const tot=d.reduce(function(a,b){return a+b;},0);
-    let x=rng.next()*tot,j=0;
-    while(j<d.length-1&&x>d[j]){x-=d[j];j++;}
-    out.push(P[j].slice());}
-  return out;
+    let x=rng.next()*tot,j=0;while(j<d.length-1&&x>d[j]){x-=d[j];j++;}
+    C0.push(train[j].slice());}
+  let a=null;
+  for(let r=0;r<40;r++){
+    const na=train.map(function(p){return nearest(p,C0);});
+    const sx=new Array(k).fill(0),sy=new Array(k).fill(0),n=new Array(k).fill(0);
+    for(let i=0;i<na.length;i++){sx[na[i]]+=train[i][0];sy[na[i]]+=train[i][1];n[na[i]]++;}
+    const C1=C0.map(function(c,j){return n[j]?[sx[j]/n[j],sy[j]/n[j]]:c.slice();});
+    const same=a&&na.every(function(v,i){return v===a[i];});
+    a=na;C0=C1;
+    if(same)break;}
+  const all=Z.P.map(function(p){return nearest(p,C0);});
+  return {Z:Z,cen:C0,train:a,all:all,k:k};
 }
-function assign(P,C0){
-  return P.map(function(p){let bi=0,bd=Infinity;
-    for(let c=0;c<C0.length;c++){const d=dist2(p,C0[c]);if(d<bd){bd=d;bi=c;}}return bi;});
-}
-function move(P,a,k,C0){
-  const sx=new Array(k).fill(0),sy=new Array(k).fill(0),n=new Array(k).fill(0);
-  for(let i=0;i<P.length;i++){sx[a[i]]+=P[i][0];sy[a[i]]+=P[i][1];n[a[i]]++;}
-  return C0.map(function(c,j){return n[j]?[sx[j]/n[j],sy[j]/n[j]]:c.slice();});
-}
-function inertia(P,a,C0){let s=0;for(let i=0;i<P.length;i++)s+=dist2(P[i],C0[a[i]]);return s;}
 function silhouette(P,a,k){
   if(k<2)return null;
   const idx=[];for(let c=0;c<k;c++)idx.push([]);
-  for(let i=0;i<P.length;i++)idx[a[i]].push(i);
+  for(let i=0;i<a.length;i++)idx[a[i]].push(i);
   if(idx.some(function(g){return g.length===0;}))return null;
   let tot=0;
-  for(let i=0;i<P.length;i++){
+  for(let i=0;i<a.length;i++){
     const own=idx[a[i]];
-    if(own.length<2){continue;}
+    if(own.length<2)continue;
     let ai=0;for(const j of own)if(j!==i)ai+=Math.sqrt(dist2(P[i],P[j]));
     ai/=(own.length-1);
     let bi=Infinity;
-    for(let c=0;c<k;c++){
-      if(c===a[i])continue;
+    for(let c=0;c<k;c++){if(c===a[i])continue;
       let d=0;for(const j of idx[c])d+=Math.sqrt(dist2(P[i],P[j]));
-      d/=idx[c].length;bi=Math.min(bi,d);}
+      bi=Math.min(bi,d/idx[c].length);}
     tot+=(bi-ai)/Math.max(ai,bi);}
-  return tot/P.length;
+  return tot/a.length;
 }
-/* an assignment scored in a space it was NOT necessarily built in -- the only way to compare
-   two clusterings fairly: same points, same ruler (RIT-style honesty, 2026-08-31) */
-function silIn(sp,a,k){return silhouette(points(sp),a,k);}
 
-/* the whole run, kept round by round so any round can be drawn */
-function run(sp,k,how,maxRounds){
-  const P=points(sp),rng=PG.rng(seed*104729+k*31+(how==='rows'?0:how==='plus'?1:2));
-  let C0=seeds(P,k,how,rng);
-  const hist=[];
-  let prev=null;
-  for(let r=1;r<=maxRounds;r++){
-    const a=assign(P,C0);
-    let moved=0;
-    if(prev){for(let i=0;i<a.length;i++)if(a[i]!==prev[i])moved++;}else moved=a.length;
-    const C1=move(P,a,k,C0);
-    hist.push({round:r,a:a,cen:C0.map(function(c){return c.slice();}),cenNext:C1,
-               moved:moved,inertia:inertia(P,a,C0)});
-    const stop=prev&&moved===0;
-    prev=a;C0=C1;
-    if(stop)break;}
-  const last=hist[hist.length-1];
-  const conv=hist.length<maxRounds||last.moved===0;
-  return {P:P,hist:hist,rounds:hist.length,converged:conv,
-          a:last.a,cen:last.cenNext,
-          inertia:inertia(P,last.a,last.cenNext),
-          sil:silhouette(P,last.a,k),
-          sizes:(function(){const n=new Array(k).fill(0);for(const c of last.a)n[c]++;return n;})()};
-}
-function state(){                       /* what the current tab is actually showing */
-  const sp=(tab===T_SPACE)?space:'z';
-  const rounds=(tab===T_ITER)?(step===99?40:step):40;
-  return run(sp,K,(tab===T_ITER)?init:'plus',rounds);
+/* ---------------- three baselines, and what each one leaves behind ----------------
+   Each is fitted on the healthy history only and then applied unchanged to the test hours. The
+   alarm rule is Day 3's, untouched: two-sided, three sigma of the training residual. */
+function baseline(kind,k){
+  const exp=new Array(N).fill(null);
+  if(kind==='mean'){
+    const m=mean(TEMP.slice(0,HIST));
+    for(let i=0;i<N;i++)exp[i]=m;
+  }else if(kind==='reg'){
+    let n=0,sx=0,sy=0,sxx=0,sxy=0;
+    for(let i=0;i<HIST;i++){n++;sx+=FLOW[i];sy+=TEMP[i];sxx+=FLOW[i]*FLOW[i];sxy+=FLOW[i]*TEMP[i];}
+    const d=n*sxx-sx*sx,b1=d?(n*sxy-sx*sy)/d:0,b0=(sy-b1*sx)/n;
+    for(let i=0;i<N;i++)exp[i]=b0+b1*FLOW[i];
+  }else{
+    const km=kmeans(k),s=new Array(k).fill(0),c=new Array(k).fill(0);
+    for(let i=0;i<HIST;i++){s[km.train[i]]+=TEMP[i];c[km.train[i]]++;}
+    const gm=mean(TEMP.slice(0,HIST));
+    const mu=s.map(function(v,j){return c[j]?v/c[j]:gm;});
+    for(let i=0;i<N;i++)exp[i]=mu[km.all[i]];}
+  const res=TEMP.map(function(t,i){return t-exp[i];});
+  const sd=sdOf(res.slice(0,HIST))||1e-9;
+  const z=res.map(function(r){return r/sd;});
+  let first=null,fp=0,ep=0,prev=false;
+  for(let i=HIST;i<N;i++){
+    const on=Math.abs(z[i])>=LIMZ;
+    if(on){if(i>=FAULT){if(first===null)first=i;}else{fp++;if(!prev)ep++;}}
+    if(i<FAULT)prev=on;}
+  let t75=null;for(let i=FAULT;i<N;i++)if(TEMP[i]>=LIMIT_C){t75=i;break;}
+  return {kind:kind,exp:exp,res:res,sd:sd,z:z,limitC:LIMZ*sd,
+          first:first,delay:first===null?null:first-FAULT,
+          fpEpisodes:ep,t75:t75,
+          lead:(first===null||t75===null)?null:t75-first};
 }
 
 /* ---------------- drawing ---------------- */
@@ -917,163 +891,154 @@ function ctxOf(cv){cv.style.width='100%';cv.style.height='100%';
   cv.width=Math.round(r.width*d);cv.height=Math.round(r.height*d);
   const c=cv.getContext('2d');c.setTransform(d,0,0,d,0,0);return c;}
 function nice(v){const a=Math.abs(v);return a>=100?v.toFixed(0):a>=10?v.toFixed(0):a>=1?v.toFixed(1):v.toFixed(2);}
-function ticks(lo,hi,n){const out=[],st=(hi-lo)/n;for(let i=0;i<=n;i++)out.push(lo+st*i);return out;}
 function axes(c,box,x0,x1,y0,y1,xl,yl){
   const PX=function(x){return box.l+(x-x0)/(x1-x0)*(box.r-box.l);},
         PY=function(y){return box.b-(y-y0)/(y1-y0)*(box.b-box.t);};
+  const tk=function(lo,hi,n){const o=[],s=(hi-lo)/n;for(let i=0;i<=n;i++)o.push(lo+s*i);return o;};
   c.strokeStyle=C.grid;c.lineWidth=1;
-  ticks(x0,x1,4).forEach(function(v){c.beginPath();c.moveTo(PX(v),box.t);c.lineTo(PX(v),box.b);c.stroke();});
-  ticks(y0,y1,4).forEach(function(v){c.beginPath();c.moveTo(box.l,PY(v));c.lineTo(box.r,PY(v));c.stroke();});
+  tk(x0,x1,4).forEach(function(v){c.beginPath();c.moveTo(PX(v),box.t);c.lineTo(PX(v),box.b);c.stroke();});
+  tk(y0,y1,4).forEach(function(v){c.beginPath();c.moveTo(box.l,PY(v));c.lineTo(box.r,PY(v));c.stroke();});
   c.strokeStyle=C.ax;c.lineWidth=1.1;c.beginPath();
   c.moveTo(box.l,box.t);c.lineTo(box.l,box.b);c.lineTo(box.r,box.b);c.stroke();
   c.fillStyle=C.axtx;c.font='12px KaTeX_Main';
   c.textAlign='right';c.textBaseline='middle';
-  ticks(y0,y1,4).forEach(function(v){c.fillText(nice(v),box.l-6,PY(v));});
+  tk(y0,y1,4).forEach(function(v){c.fillText(nice(v),box.l-6,PY(v));});
   c.textAlign='center';c.textBaseline='top';
-  ticks(x0,x1,4).forEach(function(v){c.fillText(nice(v),PX(v),box.b+5);});
-  c.fillText(xl,(box.l+box.r)/2,box.b+22);
-  c.save();c.translate(box.l-38,(box.t+box.b)/2);c.rotate(-Math.PI/2);
-  c.textBaseline='bottom';c.fillText(yl,0,0);c.restore();
+  tk(x0,x1,4).forEach(function(v){c.fillText(nice(v),PX(v),box.b+5);});
+  if(xl)c.fillText(xl,(box.l+box.r)/2,box.b+21);
+  if(yl){c.save();c.translate(box.l-40,(box.t+box.b)/2);c.rotate(-Math.PI/2);
+    c.textBaseline='bottom';c.fillText(yl,0,0);c.restore();}
   return {PX:PX,PY:PY};
 }
-function scatter(c,box,P,a,cen,xl,yl,note){
-  const xs=P.map(function(p){return p[0];}),ys=P.map(function(p){return p[1];});
-  const x0=Math.min.apply(null,xs),x1=Math.max.apply(null,xs);
-  const y0=Math.min.apply(null,ys),y1=Math.max.apply(null,ys);
-  const px=(x1-x0)*0.08,py=(y1-y0)*0.10;
-  const A=axes(c,box,x0-px,x1+px,y0-py,y1+py,xl,yl);
-  for(let i=0;i<P.length;i++){
-    c.fillStyle=a?C.cl[a[i]%C.cl.length]:C.pt;
-    c.globalAlpha=0.75;c.beginPath();c.arc(A.PX(P[i][0]),A.PY(P[i][1]),3.0,0,6.284);c.fill();}
-  c.globalAlpha=1;
-  if(cen)cen.forEach(function(p,j){
-    const x=A.PX(p[0]),y=A.PY(p[1]);
-    c.strokeStyle='#fff';c.lineWidth=4.4;
-    c.beginPath();c.moveTo(x-7,y-7);c.lineTo(x+7,y+7);c.moveTo(x+7,y-7);c.lineTo(x-7,y+7);c.stroke();
-    c.strokeStyle=C.cen;c.lineWidth=2.4;
-    c.beginPath();c.moveTo(x-7,y-7);c.lineTo(x+7,y+7);c.moveTo(x+7,y-7);c.lineTo(x-7,y+7);c.stroke();});
-  if(note){c.fillStyle=C.axtx;c.font='12.5px KaTeX_Main';c.textAlign='left';c.textBaseline='top';
-    c.fillText(note,box.l+6,box.t+4);}
-  return A;
-}
-function curve(c,box,ks,vals,lab,best){
-  const y0=Math.min.apply(null,vals),y1=Math.max.apply(null,vals);
-  const pad=(y1-y0)*0.18||0.1;
-  const A=axes(c,box,ks[0]-0.4,ks[ks.length-1]+0.4,y0-pad,y1+pad,'k',lab);
-  c.strokeStyle=C.cl[0];c.lineWidth=2.0;c.beginPath();
-  ks.forEach(function(k,i){const x=A.PX(k),y=A.PY(vals[i]);i?c.lineTo(x,y):c.moveTo(x,y);});
-  c.stroke();
-  ks.forEach(function(k,i){
-    const x=A.PX(k),y=A.PY(vals[i]),win=(k===best);
-    c.fillStyle=win?C.good:C.cl[0];
-    c.beginPath();c.arc(x,y,win?5.6:3.6,0,6.284);c.fill();
-    c.fillStyle=win?C.good:C.axtx;c.font=(win?'600 ':'')+'12px KaTeX_Main';
-    c.textAlign='center';c.textBaseline='bottom';c.fillText(nice(vals[i]),x,y-8);});
-  return A;
-}
+function note(c,box,s){c.fillStyle=C.axtx;c.font='12.5px KaTeX_Main';
+  c.textAlign='left';c.textBaseline='top';c.fillText(s,box.l+6,box.t+4);}
+function series(c,arr,A,col,w){c.strokeStyle=col;c.lineWidth=w||1.3;c.beginPath();
+  let on=false;for(let i=0;i<arr.length;i++){const v=arr[i];if(!ok(v)){on=false;continue;}
+    const x=A.PX(i),y=A.PY(v);on?c.lineTo(x,y):c.moveTo(x,y);on=true;}c.stroke();}
+function vline(c,box,A,i,col){c.strokeStyle=col;c.lineWidth=1.4;c.setLineDash([4,4]);
+  c.beginPath();c.moveTo(A.PX(i),box.t);c.lineTo(A.PX(i),box.b);c.stroke();c.setLineDash([]);}
+function hline(c,box,A,v,col,dash){c.strokeStyle=col;c.lineWidth=1.5;if(dash)c.setLineDash(dash);
+  c.beginPath();c.moveTo(box.l,A.PY(v));c.lineTo(box.r,A.PY(v));c.stroke();c.setLineDash([]);}
+function pad(a,extra){const lo=Math.min.apply(null,a),hi=Math.max.apply(null,a);
+  const p=(hi-lo)*(extra||0.10)||1;return [lo-p,hi+p];}
+
 function draw(){
   const cv=document.getElementById('mC'),c=ctxOf(cv),W=cv.clientWidth,H=cv.clientHeight;
   c.clearRect(0,0,W,H);
-  const L=58,R=W-14,T=16,B=H-34;
-  if(tab===T_ITER){
-    const S=state(),h=S.hist[S.hist.length-1];
-    const note=(step===99?('ran until nothing moved  ·  round '+S.rounds):('round '+h.round))
-      +'   ·   points that moved this round  '+h.moved;
-    scatter(c,{l:L,r:R,t:T,b:B},S.P,h.a,h.cenNext,'temperature (z)','vibration (z)',note);
-  }else if(tab===T_K){
-    const half=Math.floor((B-T-26)/2);
-    const S=state();
-    scatter(c,{l:L,r:R,t:T,b:T+half},S.P,S.a,S.cen,'temperature (z)','vibration (z)',
-            'k = '+K+'   ·   silhouette '+(S.sil===null?'—':S.sil.toFixed(2)));
-    const ks=[2,3,4,5],vals=ks.map(function(k){const r=run('z',k,'plus',40);return r.sil===null?0:r.sil;});
-    let best=ks[0],bv=-2;ks.forEach(function(k,i){if(vals[i]>bv){bv=vals[i];best=k;}});
-    curve(c,{l:L,r:R,t:T+half+26,b:B},ks,vals,'silhouette',best);
+  const L=58,R=W-14,T=16,B=H-32;
+  if(tab===T_MODE){
+    const km=kmeans(K),Z=km.Z;
+    const rx=pad(FLOW.slice(0,HIST)),ry=pad(VIB.slice(0,HIST));
+    const A=axes(c,{l:L,r:R,t:T,b:B},rx[0],rx[1],ry[0],ry[1],'flow (m³/h)','vibration (mm/s)');
+    for(let i=0;i<HIST;i++){
+      c.fillStyle=C.cl[km.train[i]%C.cl.length];c.globalAlpha=0.8;
+      c.beginPath();c.arc(A.PX(FLOW[i]),A.PY(VIB[i]),3.4,0,6.284);c.fill();}
+    c.globalAlpha=1;
+    km.cen.forEach(function(p){
+      const x=A.PX(p[0]*Z.sf+Z.mf),y=A.PY(p[1]*Z.sv+Z.mv);
+      c.strokeStyle='#fff';c.lineWidth=4.4;
+      c.beginPath();c.moveTo(x-7,y-7);c.lineTo(x+7,y+7);c.moveTo(x+7,y-7);c.lineTo(x-7,y+7);c.stroke();
+      c.strokeStyle=C.cen;c.lineWidth=2.4;
+      c.beginPath();c.moveTo(x-7,y-7);c.lineTo(x+7,y+7);c.moveTo(x+7,y-7);c.lineTo(x-7,y+7);c.stroke();});
+    const s=silhouette(km.Z.P.slice(0,HIST),km.train,K);
+    note(c,{l:L,t:T},'healthy history only  ·  k = '+K+(s===null?'':'  ·  silhouette '+s.toFixed(2)));
+    return;}
+  const b=baseline(base,K);
+  const i0=(tab===T_MON)?HIST:0,i1=(tab===T_MON)?N:HIST;
+  const half=Math.floor((B-T-24)/2);
+  const box1={l:L,r:R,t:T,b:T+half},box2={l:L,r:R,t:T+half+24,b:B};
+  const seg=TEMP.slice(i0,i1).concat(b.exp.slice(i0,i1)).concat(tab===T_MON?[LIMIT_C]:[]);
+  const ry=pad(seg,0.12);
+  const A1=axes(c,box1,i0,i1-1,ry[0],ry[1],'','temperature, °C');
+  c.save();c.beginPath();c.rect(box1.l,box1.t,box1.r-box1.l,box1.b-box1.t);c.clip();
+  series(c,TEMP,A1,C.data,1.3);
+  series(c,b.exp,A1,C.exp,2.2);
+  c.restore();
+  if(tab===T_MON){hline(c,box1,A1,LIMIT_C,C.lim,[3,3]);vline(c,box1,A1,FAULT,C.fault);}
+  note(c,box1,(tab===T_MON?'test hours  ·  ':'healthy history  ·  ')+BNAME[base]+
+    '  ·  residual sd '+b.sd.toFixed(2)+' °C');
+  const zr=(tab===T_MON)?[-6,14]:[-6,6];
+  const A2=axes(c,box2,i0,i1-1,zr[0],zr[1],'hour','residual ÷ sd  (z)');
+  c.save();c.beginPath();c.rect(box2.l,box2.t,box2.r-box2.l,box2.b-box2.t);c.clip();
+  series(c,b.z,A2,C.data,1.3);
+  c.restore();
+  hline(c,box2,A2,LIMZ,C.lim,[7,4]);hline(c,box2,A2,-LIMZ,C.lim,[7,4]);
+  if(tab===T_MON){
+    vline(c,box2,A2,FAULT,C.fault);
+    c.fillStyle=C.mark;
+    for(let i=HIST;i<N;i++)if(Math.abs(b.z[i])>=LIMZ){
+      const y=Math.max(box2.t,Math.min(box2.b,A2.PY(b.z[i])));
+      c.beginPath();c.arc(A2.PX(i),y,2.6,0,6.284);c.fill();}
+    if(b.first!==null){c.strokeStyle=C.alarm;c.lineWidth=1.8;c.setLineDash([3,3]);
+      c.beginPath();c.moveTo(A2.PX(b.first),box2.t);c.lineTo(A2.PX(b.first),box2.b);c.stroke();
+      c.setLineDash([]);}
+    note(c,box2,b.first===null?'no alarm in these hours':
+      ('first alarm  +'+b.delay+' h after the fault started'));
   }else{
-    const half=Math.floor((B-T-26)/2);
-    const A=run('raw',K,'plus',40),Z=run('z',K,'plus',40);
-    const shown=(space==='raw')?A:Z;
-    const sShown=silIn('z',shown.a,K);
-    scatter(c,{l:L,r:R,t:T,b:T+half},points('raw'),shown.a,null,'temperature (°C)',
-            'vibration (mm/s)','clusters found with the distance in '
-            +(space==='raw'?'raw units':'z-scores')
-            +'   ·   silhouette (scored in z) '+(sShown===null?'—':sShown.toFixed(2)));
-    scatter(c,{l:L,r:R,t:T+half+26,b:B},points('raw'),null,null,
-            'temperature (°C)','vibration (mm/s)','the same points, before any clustering');
-  }
+    note(c,box2,'control limit  ± '+b.limitC.toFixed(2)+' °C   (3 sd of this residual)');}
 }
 
 /* ---------------- the table ---------------- */
 function table(){
   const thr=document.getElementById('thr'),tbb=document.getElementById('tbb');
   thr.innerHTML='';tbb.innerHTML='';
-  document.getElementById('tbl').className='mtab'+(tab===T_ITER?'':' wide');
+  document.getElementById('tbl').className='mtab'+(tab===T_MODE?'':' wide');
   const th=function(t,cls){const e=document.createElement('th');if(cls)e.className=cls;K_(t,e);return e;};
   const td=function(t,cls){const e=document.createElement('td');if(cls)e.className=cls;K_(t,e);return e;};
   const head=function(cols){cols.forEach(function(h){const e=th(h[0]);
     if(h[1])e.style.textAlign='right';thr.appendChild(e);});};
-  if(tab===T_ITER){
-    head([['\\text{round}',0],['\\text{points that moved cluster}',1],
-          ['\\text{inertia}',1],['\\text{silhouette}',1]]);
-    const S=state(),P=S.P;
-    /* a long run must not push the table off the screen: the first four rounds and the last
-       one, each labelled with its REAL round number, so nothing about the length is hidden
-       (the figure note carries the total as well) */
-    const rows=S.hist.length<=5?S.hist:S.hist.slice(0,4).concat([S.hist[S.hist.length-1]]);
-    rows.forEach(function(h,i){
+  if(tab===T_MODE){
+    head([['\\text{modes assumed }(k)',0],['\\text{silhouette}',1],
+          ['\\text{hours per mode}',1],['\\text{residual sd of a per-mode baseline}',1]]);
+    const rows=[1,2,3,4].map(function(k){
+      const km=kmeans(k),s=(k<2)?null:silhouette(km.Z.P.slice(0,HIST),km.train,k);
+      const n=new Array(k).fill(0);for(let i=0;i<HIST;i++)n[km.train[i]]++;
+      return {k:k,s:s,n:n,sd:baseline('mode',k).sd};});
+    let bi=0,bv=-2;rows.forEach(function(r,i){const v=(r.s===null?-1:r.s);if(v>bv){bv=v;bi=i;}});
+    rows.forEach(function(r,i){
       const tr=document.createElement('tr');
-      if(i===rows.length-1)tr.className='sel';
-      tr.appendChild(th('\\text{'+h.round+'}'));
-      tr.appendChild(td(String(h.moved),h.moved===0?'win':''));
-      tr.appendChild(td(h.inertia.toFixed(1)));
-      const s=silhouette(P,h.a,K);
-      tr.appendChild(td(s===null?'\\text{--}':s.toFixed(3)));
+      if(r.k===K)tr.className='sel';
+      const w=(i===bi);
+      tr.appendChild(th('\\text{'+r.k+'}',w?'win':''));
+      tr.appendChild(td(r.s===null?'\\text{--}':r.s.toFixed(3),w?'win':''));
+      tr.appendChild(td(r.n.join('\\,+\\,')));
+      tr.appendChild(td(r.sd.toFixed(2)));
       tbb.appendChild(tr);});
     return;}
-  if(tab===T_K){
-    head([['k',0],['\\text{silhouette}',1],['\\text{inertia}',1],['\\text{cluster sizes}',1]]);
-    const ks=[2,3,4,5],res=ks.map(function(k){return run('z',k,'plus',40);});
-    let best=0,bv=-2;res.forEach(function(r,i){const v=r.sil===null?-1:r.sil;if(v>bv){bv=v;best=i;}});
-    res.forEach(function(r,i){
+  if(tab===T_BASE){
+    head([['\\text{baseline}',0],['\\text{residual sd, }^\\circ\\text{C}',1],
+          ['\\text{control limit, }^\\circ\\text{C}',1],['\\text{what it assumes}',0]]);
+    const rows=BASE.map(function(b){return {k:b[0],r:baseline(b[0],K)};});
+    let bi=0,bv=Infinity;rows.forEach(function(r,i){if(r.r.sd<bv){bv=r.r.sd;bi=i;}});
+    const WHY={mean:'\\text{the machine has one normal level}',
+               reg:'\\text{temperature follows flow, and nothing else}',
+               mode:'\\text{each mode has its own normal level}'};
+    rows.forEach(function(r,i){
       const tr=document.createElement('tr');
-      if(ks[i]===K)tr.className='sel';
-      const w=(i===best);
-      tr.appendChild(th('\\text{'+ks[i]+'}',w?'win':''));
-      tr.appendChild(td(r.sil===null?'\\text{--}':r.sil.toFixed(3),w?'win':''));
-      tr.appendChild(td(r.inertia.toFixed(1)));
-      tr.appendChild(td(r.sizes.join('\\,+\\,')));
+      if(r.k===base)tr.className='sel';
+      const w=(i===bi);
+      tr.appendChild(th('\\text{'+BNAME[r.k]+'}',w?'win':''));
+      tr.appendChild(td(r.r.sd.toFixed(2),w?'win':''));
+      tr.appendChild(td('\\pm '+r.r.limitC.toFixed(2)));
+      tr.appendChild(td(WHY[r.k],'lft'));
       tbb.appendChild(tr);});
     return;}
-  head([['\\text{distance measured in}',0],['\\text{silhouette (scored in }z\\text{)}',1],
-        ['\\text{biggest cluster}',1],['\\text{points in a different cluster}',1]]);
-  const A=run('raw',K,'plus',40),Z=run('z',K,'plus',40);
-  const diff=agree(A.a,Z.a,K);
-  /* both clusterings are scored on the SAME ruler -- a silhouette measured in raw units answers
-     a different question and cannot be put in the same column */
-  const sA=silIn('z',A.a,K),sZ=silIn('z',Z.a,K);
-  const bestS=Math.max(sA===null?-2:sA,sZ===null?-2:sZ);
-  [['\\text{raw units}',A,'raw',sA],['z\\text{-scores}',Z,'z',sZ]].forEach(function(row){
-    const r=row[1],sv=row[3],tr=document.createElement('tr');
-    if(row[2]===space)tr.className='sel';
-    const w=(sv!==null&&sv>=bestS-1e-9);
-    tr.appendChild(th(row[0],w?'win':''));
-    tr.appendChild(td(sv===null?'\\text{--}':sv.toFixed(3),w?'win':''));
-    tr.appendChild(td(Math.round(100*Math.max.apply(null,r.sizes)/N)+'\\%'));
-    tr.appendChild(td(String(diff)));
+  head([['\\text{baseline}',0],['\\text{detection delay, h}',1],
+        ['\\text{lead over }75^\\circ\\text{C, h}',1],['\\text{false alarms}',1]]);
+  const rows=BASE.map(function(b){return {k:b[0],r:baseline(b[0],K)};});
+  let bv=Infinity;
+  rows.forEach(function(r){if(r.r.delay!==null&&r.r.delay<bv)bv=r.r.delay;});
+  rows.forEach(function(r){
+    const tr=document.createElement('tr');
+    if(r.k===base)tr.className='sel';
+    const w=(r.r.delay!==null&&r.r.delay<=bv);
+    tr.appendChild(th('\\text{'+BNAME[r.k]+'}',w?'win':''));
+    tr.appendChild(td(r.r.delay===null?'\\text{never}':String(r.r.delay),
+                      r.r.delay===null?'bad':(w?'win':'')));
+    tr.appendChild(td(r.r.lead===null?'\\text{--}':String(r.r.lead),
+                      (r.r.lead!==null&&r.r.lead>0)?'win':''));
+    tr.appendChild(td(String(r.r.fpEpisodes),r.r.fpEpisodes>0?'bad':''));
     tbb.appendChild(tr);});
-}
-/* how many points end up in a different cluster once the units change -- cluster NUMBERS are
-   arbitrary, so the two labellings are matched by best overlap before they are compared */
-function agree(a,b,k){
-  const best=new Array(k).fill(-1),used={};
-  for(let i=0;i<k;i++){
-    let bj=-1,bn=-1;
-    for(let j=0;j<k;j++){
-      if(used[j])continue;
-      let n=0;for(let t=0;t<a.length;t++)if(a[t]===i&&b[t]===j)n++;
-      if(n>bn){bn=n;bj=j;}}
-    used[bj]=1;best[i]=bj;}
-  let d=0;for(let t=0;t<a.length;t++)if(best[a[t]]!==b[t])d++;
-  return d;
 }
 
 /* ---------------- rail, tabs, wiring ---------------- */
@@ -1083,25 +1048,21 @@ function paint(name,v){document.querySelectorAll('.seg[data-for="'+name+'"] butt
 function syncRows(){
   const set=function(id,st){const e=document.getElementById(id);
     e.classList.toggle('off',st==='hide');e.classList.toggle('lock',st==='lock');};
-  set('c-pattern','live');
-  set('c-k',tab===T_K?'lock':'live');       /* the k sweep tab picks k for you, row by row */
-  set('c-init',tab===T_ITER?'live':'hide'); /* the starting point only matters while it moves */
-  set('c-step',tab===T_ITER?'live':'hide');
-  set('c-space',tab===T_SPACE?'live':'hide');
+  set('c-machine','live');
+  set('c-k','live');            /* k is the lever of the whole day: it reaches detection delay */
+  set('c-base',tab===T_MODE?'hide':'live');
 }
 function refresh(){syncRows();regen();draw();table();}
 function setSeg(name,v){
-  const row={pattern:'c-pattern',k:'c-k',init:'c-init',step:'c-step',space:'c-space'}[name];
+  const row={machine:'c-machine',k:'c-k',base:'c-base'}[name];
   if(document.getElementById(row).classList.contains('lock'))return;
-  if(name==='pattern')pattern=v; else if(name==='k')K=+v;
-  else if(name==='init')init=v; else if(name==='step')step=+v;
-  else if(name==='space')space=v;
+  if(name==='machine')mach=v; else if(name==='k')K=+v; else if(name==='base')base=v;
   paint(name,v);refresh();}
 function applyTab(i){tab=i;
   document.querySelectorAll('.tabbtn').forEach(function(b,j){b.className='tabbtn'+(j===i?' on':'');});
   refresh();}
-const TABS=[{name:'\\text{1. Rounds}'},{name:'\\text{2. How many}'},{name:'\\text{3. Units}'}];
-['pattern','k','init','step','space'].forEach(function(nm){
+const TABS=[{name:'\\text{1. Modes}'},{name:'\\text{2. Baseline}'},{name:'\\text{3. Monitoring}'}];
+['machine','k','base'].forEach(function(nm){
   document.querySelectorAll('.seg[data-for="'+nm+'"] button').forEach(function(b){
     b.addEventListener('click',function(){setSeg(nm,b.getAttribute('data-val'));});});});
 document.getElementById('resetBtn').addEventListener('click',function(){seed++;refresh();});
@@ -1110,35 +1071,28 @@ const tb=document.getElementById('tabs');
 TABS.forEach(function(T,i){const b=document.createElement('button');b.className='tabbtn';
   (window.katex?katex.render(T.name,b,{throwOnError:false}):(b.textContent=T.name));
   b.onclick=function(){applyTab(i);};tb.appendChild(b);});
-['pattern','k','init','step','space'].forEach(function(nm){
-  paint(nm,{pattern:pattern,k:K,init:init,step:step,space:space}[nm]);});
-applyTab(T_ITER);
+['machine','k','base'].forEach(function(nm){paint(nm,{machine:mach,k:K,base:base}[nm]);});
+applyTab(T_MODE);
 
 window.LAB={
   read:function(){
-    const S=state();
-    const o={tab:tab,pattern:pattern,k:K,init:init,step:step,space:space,seed:seed,n:N,
-             rounds:S.rounds,converged:S.converged,
-             inertia:+S.inertia.toFixed(4),
-             silhouette:S.sil===null?null:+S.sil.toFixed(4),
-             sizes:S.sizes,moved:S.hist.map(function(h){return h.moved;}),
-             sweep:{},spaces:{}};
-    for(const k of [2,3,4,5]){const r=run('z',k,'plus',40);
-      o.sweep[k]={silhouette:r.sil===null?null:+r.sil.toFixed(4),
-                  inertia:+r.inertia.toFixed(4),sizes:r.sizes,rounds:r.rounds};}
-    for(const sp of ['raw','z']){const r=run(sp,K,'plus',40);
-      const sz=silIn('z',r.a,K);
-      o.spaces[sp]={silhouette:r.sil===null?null:+r.sil.toFixed(4),
-                    silhouetteInZ:sz===null?null:+sz.toFixed(4),
-                    inertia:+r.inertia.toFixed(4),sizes:r.sizes};}
-    o.disagree=agree(run('raw',K,'plus',40).a,run('z',K,'plus',40).a,K);
+    const o={tab:tab,machine:mach,k:K,base:base,seed:seed,
+             n:N,hist:HIST,faultStart:FAULT,limitC:LIMIT_C,modes:{},baselines:{}};
+    for(const k of [1,2,3,4]){
+      const km=kmeans(k),s=(k<2)?null:silhouette(km.Z.P.slice(0,HIST),km.train,k);
+      const n=new Array(k).fill(0);for(let i=0;i<HIST;i++)n[km.train[i]]++;
+      o.modes[k]={silhouette:s===null?null:+s.toFixed(4),sizes:n,
+                  sdPerMode:+baseline('mode',k).sd.toFixed(4)};}
+    for(const b of ['mean','reg','mode']){
+      const r=baseline(b,K);
+      o.baselines[b]={sd:+r.sd.toFixed(4),limitC:+r.limitC.toFixed(4),
+                      delay:r.delay,lead:r.lead,falseAlarms:r.fpEpisodes,
+                      first:r.first,t75:r.t75};}
     return o;},
   set:function(o){
-    if(o.pattern!=null){pattern=o.pattern;paint('pattern',pattern);}
+    if(o.machine!=null){mach=o.machine;paint('machine',mach);}
     if(o.k!=null){K=+o.k;paint('k',K);}
-    if(o.init!=null){init=o.init;paint('init',init);}
-    if(o.step!=null){step=+o.step;paint('step',step);}
-    if(o.space!=null){space=o.space;paint('space',space);}
+    if(o.base!=null){base=o.base;paint('base',base);}
     if(o.seed!=null)seed=+o.seed;
     if(o.tab!=null)applyTab(o.tab); else refresh();}};
 (function(){const mC=document.getElementById('mC');
