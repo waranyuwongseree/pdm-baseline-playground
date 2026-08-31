@@ -273,12 +273,12 @@ body.distcls .wrap{height:auto;max-height:900px}   /* เนื้อหาส�
         <span class="dlab" style="flex:0 0 auto;color:#475569;font-size:15px;font-weight:600">\(\text{Machine}\)</span>
         <div class="seg" data-for="machine">
           <button type="button" data-val="one">\(\text{One mode}\)</button>
-          <button type="button" data-val="load">\(\text{Two modes, driven by load}\)</button>
-          <button type="button" data-val="levels">\(\text{Two modes, no driver}\)</button>
+          <button type="button" data-val="load">\(\text{Load-driven modes}\)</button>
+          <button type="button" data-val="levels">\(\text{Hidden modes}\)</button>
         </div>
       </div>
       <div class="drow" id="c-k">
-        <span class="dlab" style="flex:0 0 auto;color:#475569;font-size:15px;font-weight:600">\(\text{Modes assumed }(k)\)</span>
+        <span class="dlab" style="flex:0 0 auto;color:#475569;font-size:15px;font-weight:600">\(\text{Modes }(k)\)</span>
         <div class="seg" data-for="k">
           <button type="button" data-val="1">\(1\)</button>
           <button type="button" data-val="2">\(2\)</button>
@@ -289,9 +289,9 @@ body.distcls .wrap{height:auto;max-height:900px}   /* เนื้อหาส�
       <div class="drow" id="c-base">
         <span class="dlab" style="flex:0 0 auto;color:#475569;font-size:15px;font-weight:600">\(\text{Baseline}\)</span>
         <div class="seg" data-for="base">
-          <button type="button" data-val="mean">\(\text{One mean for everything}\)</button>
+          <button type="button" data-val="mean">\(\text{Mean baseline}\)</button>
           <button type="button" data-val="reg">\(\text{Regression on flow}\)</button>
-          <button type="button" data-val="mode">\(\text{One mean per mode}\)</button>
+          <button type="button" data-val="mode">\(\text{Mean per mode}\)</button>
         </div>
       </div>
       <div class="row" id="rowRun">
@@ -760,7 +760,7 @@ if (typeof document !== 'undefined') (function () {
    ========================================================================================== */
 const N=96,HIST=48,FAULT=72,LIMZ=3,LIMIT_C=75;
 const BASE=[['mean','One mean for everything'],['reg','Regression on flow'],['mode','One mean per mode']];
-const BNAME={mean:'One mean for everything',reg:'Regression on flow',mode:'One mean per mode'};
+const BNAME={mean:'Mean baseline',reg:'Regression on flow',mode:'Mean per mode'};
 const T_MODE=0,T_BASE=1,T_MON=2;
 const C={cl:['#33618D','#1E7A56','#C07E00','#8E5AA8'],
          data:'#6E93B8',exp:'#1E7A56',lim:'#B0503A',alarm:'#C07E00',mark:'#B0503A',
@@ -889,15 +889,16 @@ function baseline(kind,k){
   const res=TEMP.map(function(t,i){return t-exp[i];});
   const sd=sdOf(res.slice(0,HIST))||1e-9;
   const z=res.map(function(r){return r/sd;});
-  let first=null,fp=0,ep=0,prev=false;
+  /* recall, exactly as Day 3 counts it: of the hours that really are faulty, how many did
+     this baseline flag. TP/FAULT_HOURS, on the test half only. */
+  let first=null,tp=0;
   for(let i=HIST;i<N;i++){
     const on=Math.abs(z[i])>=LIMZ;
-    if(on){if(i>=FAULT){if(first===null)first=i;}else{fp++;if(!prev)ep++;}}
-    if(i<FAULT)prev=on;}
+    if(on&&i>=FAULT){tp++;if(first===null)first=i;}}
   let t75=null;for(let i=FAULT;i<N;i++)if(TEMP[i]>=LIMIT_C){t75=i;break;}
   return {kind:kind,exp:exp,res:res,sd:sd,z:z,limitC:LIMZ*sd,
           first:first,delay:first===null?null:first-FAULT,
-          fpEpisodes:ep,t75:t75,
+          rec:tp/(N-FAULT),t75:t75,
           lead:(first===null||t75===null)?null:t75-first};
 }
 
@@ -965,8 +966,7 @@ function draw(){
       c.beginPath();c.moveTo(box1.l,A1.PY(mu[j]));c.lineTo(box1.r,A1.PY(mu[j]));c.stroke();
       c.setLineDash([]);}
     c.restore();
-    note(c,box1,'healthy history  ·  each hour coloured by the mode it was put in  ·  '+
-      'dashed lines are the modes\' means');
+    note(c,box1,'healthy history  ·  colour = assigned mode  ·  dashed = mode mean');
     /* the second view: the same hours as a shape, which is what the clustering actually
        read (Session 1's Histogram node) */
     {const lo=ry1[0],hi=ry1[1],B_=26,cnt2=new Array(B_).fill(0),by=[];
@@ -983,7 +983,7 @@ function draw(){
        const x=A2.PX(lo+(j+0.5)*(hi-lo)/B_)-w*0.42,y=A2.PY(cnt2[j]);
        c.fillRect(x,y,w*0.84,A2.PY(0)-y);}
      c.globalAlpha=1;
-     note(c,box2,'the same hours as a shape — this is what the clustering read');}
+     note(c,box2,'the same hours as a shape');}
     const s=silhouette(km.Z.P.slice(0,HIST),km.train,K);
     return;}
   const b=baseline(base,K);
@@ -999,7 +999,7 @@ function draw(){
   c.restore();
   if(tab===T_MON){hline(c,box1,A1,LIMIT_C,C.lim,[3,3]);vline(c,box1,A1,FAULT,C.fault);}
   note(c,box1,(tab===T_MON?'test hours  ·  ':'healthy history  ·  ')+BNAME[base]+
-    '  ·  residual sd '+b.sd.toFixed(2)+' °C');
+    '  ·  sd '+b.sd.toFixed(2)+' °C');
   const zr=(tab===T_MON)?[-6,14]:[-6,6];
   const A2=axes(c,box2,i0,i1-1,zr[0],zr[1],'hour','residual ÷ sd  (z)');
   c.save();c.beginPath();c.rect(box2.l,box2.t,box2.r-box2.l,box2.b-box2.t);c.clip();
@@ -1015,10 +1015,10 @@ function draw(){
     if(b.first!==null){c.strokeStyle=C.alarm;c.lineWidth=1.8;c.setLineDash([3,3]);
       c.beginPath();c.moveTo(A2.PX(b.first),box2.t);c.lineTo(A2.PX(b.first),box2.b);c.stroke();
       c.setLineDash([]);}
-    note(c,box2,b.first===null?'no alarm in these hours':
-      ('first alarm  +'+b.delay+' h after the fault started'));
+    note(c,box2,b.first===null?'no alarm':
+      ('first alarm  ·  '+b.delay+' h after the fault'));
   }else{
-    note(c,box2,'control limit  ± '+b.limitC.toFixed(2)+' °C   (3 sd of this residual)');}
+    note(c,box2,'control limit  ± '+b.limitC.toFixed(2)+' °C  ·  3 sd');}
 }
 
 /* ---------------- the table ---------------- */
@@ -1031,8 +1031,8 @@ function table(){
   const head=function(cols){cols.forEach(function(h){const e=th(h[0]);
     if(h[1])e.style.textAlign='right';thr.appendChild(e);});};
   if(tab===T_MODE){
-    head([['\\text{modes assumed }(k)',0],['\\text{silhouette}',1],
-          ['\\text{hours per mode}',1],['\\text{residual sd of a per-mode baseline}',1]]);
+    head([['\\text{modes }(k)',0],['\\text{silhouette}',1],
+          ['\\text{hours per mode}',1],['\\text{residual sd},\\ ^\\circ\\text{C}',1]]);
     const rows=[1,2,3,4].map(function(k){
       const km=kmeans(k),s=(k<2)?null:silhouette(km.Z.P.slice(0,HIST),km.train,k);
       const n=new Array(k).fill(0);for(let i=0;i<HIST;i++)n[km.train[i]]++;
@@ -1044,18 +1044,18 @@ function table(){
       const w=(i===bi);
       tr.appendChild(th('\\text{'+r.k+'}',w?'win':''));
       tr.appendChild(td(r.s===null?'\\text{--}':r.s.toFixed(3),w?'win':''));
-      tr.appendChild(td(r.n.join('\\,+\\,')));
+      tr.appendChild(td(r.n.join('\\ /\\ ')));
       tr.appendChild(td(r.sd.toFixed(2)));
       tbb.appendChild(tr);});
     return;}
   if(tab===T_BASE){
-    head([['\\text{baseline}',0],['\\text{residual sd, }^\\circ\\text{C}',1],
-          ['\\text{control limit, }^\\circ\\text{C}',1],['\\text{what it assumes}',0]]);
+    head([['\\text{baseline}',0],['\\text{residual sd},\\ ^\\circ\\text{C}',1],
+          ['\\text{control limit},\\ ^\\circ\\text{C}',1],['\\text{what it assumes}',0]]);
     const rows=BASE.map(function(b){return {k:b[0],r:baseline(b[0],K)};});
     let bi=0,bv=Infinity;rows.forEach(function(r,i){if(r.r.sd<bv){bv=r.r.sd;bi=i;}});
-    const WHY={mean:'\\text{the machine has one normal level}',
-               reg:'\\text{temperature follows flow, and nothing else}',
-               mode:'\\text{each mode has its own normal level}'};
+    const WHY={mean:'\\text{one normal level}',
+               reg:'\\text{temperature follows flow}',
+               mode:'\\text{one normal level per mode}'};
     rows.forEach(function(r,i){
       const tr=document.createElement('tr');
       if(r.k===base)tr.className='sel';
@@ -1067,7 +1067,7 @@ function table(){
       tbb.appendChild(tr);});
     return;}
   head([['\\text{baseline}',0],['\\text{detection delay, h}',1],
-        ['\\text{lead over }75^\\circ\\text{C, h}',1],['\\text{false alarms}',1]]);
+        ['\\text{lead vs 75 °C, h}',1],['\\text{recall, \\%}',1]]);
   const rows=BASE.map(function(b){return {k:b[0],r:baseline(b[0],K)};});
   let bv=Infinity;
   rows.forEach(function(r){if(r.r.delay!==null&&r.r.delay<bv)bv=r.r.delay;});
@@ -1080,7 +1080,7 @@ function table(){
                       r.r.delay===null?'bad':(w?'win':'')));
     tr.appendChild(td(r.r.lead===null?'\\text{--}':String(r.r.lead),
                       (r.r.lead!==null&&r.r.lead>0)?'win':''));
-    tr.appendChild(td(String(r.r.fpEpisodes),r.r.fpEpisodes>0?'bad':''));
+    tr.appendChild(td(String(Math.round(100*r.r.rec))));
     tbb.appendChild(tr);});
 }
 
@@ -1129,7 +1129,7 @@ window.LAB={
     for(const b of ['mean','reg','mode']){
       const r=baseline(b,K);
       o.baselines[b]={sd:+r.sd.toFixed(4),limitC:+r.limitC.toFixed(4),
-                      delay:r.delay,lead:r.lead,falseAlarms:r.fpEpisodes,
+                      delay:r.delay,lead:r.lead,rec:+r.rec.toFixed(4),
                       first:r.first,t75:r.t75};}
     return o;},
   set:function(o){
