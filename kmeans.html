@@ -237,12 +237,12 @@ body.distcls .wrap{height:auto;max-height:900px}   /* เนื้อหาส�
   .pg .panel .seg[data-for="k"] button:nth-child(2n){border-left:1px solid #e6e6e0!important}
   .pg .panel .seg[data-for="machine"] button:nth-child(n+3),
   .pg .panel .seg[data-for="k"] button:nth-child(n+3){border-top:1px solid #e6e6e0!important}
-  .pg .panel .seg[data-for="base"]{
-    display:grid;grid-template-columns:1fr;width:100%;min-width:0;
-    border:1px solid #e6e6e0;border-radius:8px;overflow:hidden}
-  .pg .panel .seg[data-for="base"] button{
-    font-size:14px;padding:6px 3px;cursor:pointer;border:0!important;text-align:center}
-  .pg .panel .seg[data-for="base"] button+button{border-top:1px solid #e6e6e0!important}
+  /* Day 3's four table marks, copied verbatim (they were missing here, so tr.sel and the win
+     marks painted nothing at all until 2026-09-03): the row for the k in the rail is tinted,
+     the best outcome is green, an unusable one is red */
+  .pg .mtab td.win,.pg .mtab th.win{color:#1E7A56;font-weight:600}
+  .pg .mtab td.bad{color:#B0503A}
+  .pg .mtab tr.sel th,.pg .mtab tr.sel td{background:#f4f7fb}
   .pg .drow.off{display:none!important}
   .pg .drow.lock{opacity:.45;pointer-events:none}
   @media (max-width:820px){
@@ -254,7 +254,7 @@ body.distcls .wrap{height:auto;max-height:900px}   /* เนื้อหาส�
 </style>
 </head>
 <body class="pg">
-<h2 class="sr-only" style="position:absolute;width:1px;height:1px;overflow:hidden">One pump that runs in more than one operating mode, and what that does to a baseline. The first tab finds the modes with k-means on the watched temperature. The second builds the expected temperature two ways on the same healthy history, one mean for everything against one mean per mode, and reads the residual each one leaves. The third lets the clock run into a fault and scores both in the operator's units: hours to the first alarm, hours of warning over the fixed seventy five degree limit, and the share of the faulty hours each one flags.</h2>
+<h2 class="sr-only" style="position:absolute;width:1px;height:1px;overflow:hidden">One pump that runs in more than one operating mode, and what that does to a baseline. Every tab reads the same four rows: the machine's hours clustered into one, two, three and four modes. One mode is Day 3's plain mean baseline. The first tab shows how the hours split. The second builds the expected temperature from each split and reads the residual and the control limit it leaves. The third lets the clock run into a fault and scores each split in the operator's units: hours to the first alarm, hours of warning over the fixed seventy five degree limit, and the share of the faulty hours it flags.</h2>
 <div class="wrap">
   <div class="hdr">
     <h1 id="__pgt" data-tex="\text{Operating modes and the baseline}">Operating modes and the baseline</h1>
@@ -281,13 +281,6 @@ body.distcls .wrap{height:auto;max-height:900px}   /* เนื้อหาส�
           <button type="button" data-val="2">\(2\)</button>
           <button type="button" data-val="3">\(3\)</button>
           <button type="button" data-val="4">\(4\)</button>
-        </div>
-      </div>
-      <div class="drow" id="c-base">
-        <span class="dlab" style="flex:0 0 auto;color:#475569;font-size:15px;font-weight:600">\(\text{Baseline}\)</span>
-        <div class="seg" data-for="base">
-          <button type="button" data-val="mean">\(\text{Mean baseline}\)</button>
-          <button type="button" data-val="mode">\(\text{Mean per mode}\)</button>
         </div>
       </div>
       <div class="row" id="rowRun">
@@ -736,13 +729,21 @@ if (typeof document !== 'undefined') (function () {
    in every one of them. k-means is not the subject here -- it is the tool that gets the modes
    back, so that a baseline can be built inside each one.
 
-     tab 1  Modes      k-means on the watched temperature: how many modes does this machine
-                       have, and does the silhouette agree with the k you assumed
-     tab 2  Baseline   the same healthy history, two ways to say what the temperature SHOULD
-                       be -- one mean for everything, or one mean per mode -- and the residual
-                       each one leaves behind
-     tab 3  Monitoring the clock runs into a fault, scored in Day 3's own readings: detection
-                       delay, lead over the fixed 75 C limit, and recall on the faulty hours
+   k IS THE ONLY LEVER, and all three tabs read the same four rows -- k = 1, 2, 3, 4 -- so
+   the same choice is followed from the clustering to the alarm:
+
+     tab 1  Modes      how the healthy hours split at each k, and the residual that split leaves
+     tab 2  Baseline   the expected temperature each split gives, and the control limit that
+                       comes out of its residual (3 sd, Day 3's rule)
+     tab 3  Monitoring the clock runs into a fault, each split scored in Day 3's own readings:
+                       detection delay, lead over the fixed 75 C limit, recall on the fault hours
+
+   RIT 2026-09-03: THERE IS NO SEPARATE 'MEAN BASELINE'. One mean for everything IS k = 1 --
+   cluster the history into one mode and that mode's mean is the mean of the whole history. Day
+   3's baseline is therefore row one of every table here, the row this day has to beat, and the
+   page needs no second control to say it. Silhouette is gone from the page with it: k is chosen
+   by what it buys -- a tighter limit, an earlier alarm, more of the fault caught -- and those
+   are the columns.
 
    RIT 2026-09-02: k-means and nothing else. A regression on load used to sit in the baseline
    row; it is Day 3's method, it was the only thing on the page that read a second sensor, and
@@ -754,13 +755,15 @@ if (typeof document !== 'undefined') (function () {
    model has to beat.
    ========================================================================================== */
 const N=96,HIST=48,FAULT=72,LIMZ=3,LIMIT_C=75;
-const BASE=['mean','mode'];
-const BNAME={mean:'Mean baseline',mode:'Mean per mode'};
+const KS=[1,2,3,4];
+/* what to call the split on the figure: k = 1 is not 'a mean per mode', it is the whole
+   history under one mean, and the note has to say so */
+function KNAME(k){return k===1?'one mean for all hours':'a mean per mode  ·  k = '+k;}
 const T_MODE=0,T_BASE=1,T_MON=2;
 const C={cl:['#33618D','#1E7A56','#C07E00','#8E5AA8'],
          data:'#6E93B8',exp:'#1E7A56',lim:'#B0503A',alarm:'#C07E00',mark:'#B0503A',
          cen:'#1F2A37',ax:'#94a3b8',axtx:'#64748b',grid:'#eef1f5',fault:'#B07AAE'};
-let tab=T_MODE,mach='one',K=2,base='mode',seed=1;
+let tab=T_MODE,mach='levels',K=2,seed=1;   /* open on the machine the day exists for */
 let TEMP=[],MODE=[];
 
 function K_(t,el,d){if(!el)return;if(window.katex){try{katex.render(String(t),el,{throwOnError:false,displayMode:!!d});return;}catch(e){}}el.textContent=t;}
@@ -834,39 +837,21 @@ function kmeans(k){
   const all=Z.P.map(function(p){return nearest(p,C0);});
   return {Z:Z,cen:C0,train:a,all:all,k:k};
 }
-function silhouette(P,a,k){
-  if(k<2)return null;
-  const idx=[];for(let c=0;c<k;c++)idx.push([]);
-  for(let i=0;i<a.length;i++)idx[a[i]].push(i);
-  if(idx.some(function(g){return g.length===0;}))return null;
-  let tot=0;
-  for(let i=0;i<a.length;i++){
-    const own=idx[a[i]];
-    if(own.length<2)continue;
-    let ai=0;for(const j of own)if(j!==i)ai+=Math.sqrt(dist2(P[i],P[j]));
-    ai/=(own.length-1);
-    let bi=Infinity;
-    for(let c=0;c<k;c++){if(c===a[i])continue;
-      let d=0;for(const j of idx[c])d+=Math.sqrt(dist2(P[i],P[j]));
-      bi=Math.min(bi,d/idx[c].length);}
-    tot+=(bi-ai)/Math.max(ai,bi);}
-  return tot/a.length;
-}
+/* ---------------- the baseline, and what each k leaves behind ----------------
+   ONE function for every k, because there is only one method: the expected temperature of an
+   hour is the mean of the mode it was put in. At k = 1 every hour is in the same mode and that
+   mean is the mean of the whole healthy history -- Day 3's baseline exactly, with no special
+   case in the code to produce it.
 
-/* ---------------- two baselines, and what each one leaves behind ----------------
-   Each is fitted on the healthy history only and then applied unchanged to the test hours. The
-   alarm rule is Day 3's, untouched: two-sided, three sigma of the training residual. */
-function baseline(kind,k){
+   Fitted on the healthy history only and then applied unchanged to the test hours. The alarm
+   rule is Day 3's, untouched: two-sided, three sigma of the training residual. */
+function baseline(k){
   const exp=new Array(N).fill(null);
-  if(kind==='mean'){
-    const m=mean(TEMP.slice(0,HIST));
-    for(let i=0;i<N;i++)exp[i]=m;
-  }else{
-    const km=kmeans(k),s=new Array(k).fill(0),c=new Array(k).fill(0);
-    for(let i=0;i<HIST;i++){s[km.train[i]]+=TEMP[i];c[km.train[i]]++;}
-    const gm=mean(TEMP.slice(0,HIST));
-    const mu=s.map(function(v,j){return c[j]?v/c[j]:gm;});
-    for(let i=0;i<N;i++)exp[i]=mu[km.all[i]];}
+  const km=kmeans(k),s=new Array(k).fill(0),c=new Array(k).fill(0);
+  for(let i=0;i<HIST;i++){s[km.train[i]]+=TEMP[i];c[km.train[i]]++;}
+  const gm=mean(TEMP.slice(0,HIST));
+  const mu=s.map(function(v,j){return c[j]?v/c[j]:gm;});
+  for(let i=0;i<N;i++)exp[i]=mu[km.all[i]];
   const res=TEMP.map(function(t,i){return t-exp[i];});
   const sd=sdOf(res.slice(0,HIST))||1e-9;
   const z=res.map(function(r){return r/sd;});
@@ -877,7 +862,7 @@ function baseline(kind,k){
     const on=Math.abs(z[i])>=LIMZ;
     if(on&&i>=FAULT){tp++;if(first===null)first=i;}}
   let t75=null;for(let i=FAULT;i<N;i++)if(TEMP[i]>=LIMIT_C){t75=i;break;}
-  return {kind:kind,exp:exp,res:res,sd:sd,z:z,limitC:LIMZ*sd,
+  return {k:k,exp:exp,res:res,sd:sd,z:z,limitC:LIMZ*sd,
           first:first,delay:first===null?null:first-FAULT,
           rec:tp/(N-FAULT),t75:t75,
           lead:(first===null||t75===null)?null:t75-first};
@@ -965,9 +950,8 @@ function draw(){
        c.fillRect(x,y,w*0.84,A2.PY(0)-y);}
      c.globalAlpha=1;
      note(c,box2,'the same hours as a shape');}
-    const s=silhouette(km.Z.P.slice(0,HIST),km.train,K);
     return;}
-  const b=baseline(base,K);
+  const b=baseline(K);
   const i0=(tab===T_MON)?HIST:0,i1=(tab===T_MON)?N:HIST;
   const half=Math.floor((B-T-24)/2);
   const box1={l:L,r:R,t:T,b:T+half},box2={l:L,r:R,t:T+half+24,b:B};
@@ -979,7 +963,7 @@ function draw(){
   series(c,b.exp,A1,C.exp,2.2);
   c.restore();
   if(tab===T_MON){hline(c,box1,A1,LIMIT_C,C.lim,[3,3]);vline(c,box1,A1,FAULT,C.fault);}
-  note(c,box1,(tab===T_MON?'test hours  ·  ':'healthy history  ·  ')+BNAME[base]+
+  note(c,box1,(tab===T_MON?'test hours  ·  ':'healthy history  ·  ')+KNAME(K)+
     '  ·  sd '+b.sd.toFixed(2)+' °C');
   const zr=(tab===T_MON)?[-6,14]:[-6,6];
   const A2=axes(c,box2,i0,i1-1,zr[0],zr[1],'hour','residual ÷ sd  (z)');
@@ -1011,55 +995,50 @@ function table(){
   const td=function(t,cls){const e=document.createElement('td');if(cls)e.className=cls;K_(t,e);return e;};
   const head=function(cols){cols.forEach(function(h){const e=th(h[0]);
     if(h[1])e.style.textAlign='right';thr.appendChild(e);});};
+  /* every tab reads the same four rows -- k = 1, 2, 3, 4 -- so one choice is followed all the
+     way from the split to the alarm. Row k = 1 is Day 3's mean baseline. */
+  const rows=KS.map(function(k){
+    const km=kmeans(k),n=new Array(k).fill(0);
+    for(let i=0;i<HIST;i++)n[km.train[i]]++;
+    return {k:k,n:n,r:baseline(k)};});
+  const kcell=function(r){return th('\\text{'+r.k+'}');};
   if(tab===T_MODE){
-    head([['\\text{modes }(k)',0],['\\text{silhouette}',1],
-          ['\\text{hours per mode}',1],['\\text{residual sd},\\ ^\\circ\\text{C}',1]]);
-    const rows=[1,2,3,4].map(function(k){
-      const km=kmeans(k),s=(k<2)?null:silhouette(km.Z.P.slice(0,HIST),km.train,k);
-      const n=new Array(k).fill(0);for(let i=0;i<HIST;i++)n[km.train[i]]++;
-      return {k:k,s:s,n:n,sd:baseline('mode',k).sd};});
-    let bi=0,bv=-2;rows.forEach(function(r,i){const v=(r.s===null?-1:r.s);if(v>bv){bv=v;bi=i;}});
-    rows.forEach(function(r,i){
+    head([['\\text{modes }(k)',0],['\\text{hours per mode}',1],
+          ['\\text{residual sd},\\ ^\\circ\\text{C}',1]]);
+    rows.forEach(function(r){
       const tr=document.createElement('tr');
       if(r.k===K)tr.className='sel';
-      const w=(i===bi);
-      tr.appendChild(th('\\text{'+r.k+'}',w?'win':''));
-      tr.appendChild(td(r.s===null?'\\text{--}':r.s.toFixed(3),w?'win':''));
+      tr.appendChild(kcell(r));
       tr.appendChild(td(r.n.join('\\ /\\ ')));
-      tr.appendChild(td(r.sd.toFixed(2)));
+      tr.appendChild(td(r.r.sd.toFixed(2)));
       tbb.appendChild(tr);});
     return;}
   if(tab===T_BASE){
-    head([['\\text{baseline}',0],['\\text{residual sd},\\ ^\\circ\\text{C}',1],
-          ['\\text{control limit},\\ ^\\circ\\text{C}',1],['\\text{what it assumes}',0]]);
-    const rows=BASE.map(function(b){return {k:b,r:baseline(b,K)};});
-    let bi=0,bv=Infinity;rows.forEach(function(r,i){if(r.r.sd<bv){bv=r.r.sd;bi=i;}});
-    const WHY={mean:'\\text{one normal level}',
-               mode:'\\text{one normal level per mode}'};
-    rows.forEach(function(r,i){
+    head([['\\text{modes }(k)',0],['\\text{residual sd},\\ ^\\circ\\text{C}',1],
+          ['\\text{control limit},\\ ^\\circ\\text{C}',1]]);
+    rows.forEach(function(r){
       const tr=document.createElement('tr');
-      if(r.k===base)tr.className='sel';
-      const w=(i===bi);
-      tr.appendChild(th('\\text{'+BNAME[r.k]+'}',w?'win':''));
-      tr.appendChild(td(r.r.sd.toFixed(2),w?'win':''));
+      if(r.k===K)tr.className='sel';
+      tr.appendChild(kcell(r));
+      tr.appendChild(td(r.r.sd.toFixed(2)));
       tr.appendChild(td('\\pm '+r.r.limitC.toFixed(2)));
-      tr.appendChild(td(WHY[r.k],'lft'));
       tbb.appendChild(tr);});
     return;}
-  head([['\\text{baseline}',0],['\\text{detection delay, h}',1],
+  head([['\\text{modes }(k)',0],['\\text{detection delay, h}',1],
         ['\\text{lead vs 75 °C, h}',1],['\\text{recall, \\%}',1]]);
-  const rows=BASE.map(function(b){return {k:b,r:baseline(b,K)};});
+  /* the win mark goes on the OUTCOME, not on the tightest fit: the earliest alarm, and any
+     lead at all over the limit the plant already has on the wall */
   let bv=Infinity;
   rows.forEach(function(r){if(r.r.delay!==null&&r.r.delay<bv)bv=r.r.delay;});
   rows.forEach(function(r){
     const tr=document.createElement('tr');
-    if(r.k===base)tr.className='sel';
+    if(r.k===K)tr.className='sel';
     const w=(r.r.delay!==null&&r.r.delay<=bv);
-    tr.appendChild(th('\\text{'+BNAME[r.k]+'}',w?'win':''));
+    tr.appendChild(th('\\text{'+r.k+'}',w?'win':''));
     tr.appendChild(td(r.r.delay===null?'\\text{never}':String(r.r.delay),
                       r.r.delay===null?'bad':(w?'win':'')));
     tr.appendChild(td(r.r.lead===null?'\\text{--}':String(r.r.lead),
-                      (r.r.lead!==null&&r.r.lead>0)?'win':''));
+                      (r.r.lead!==null&&r.r.lead>0)?'win':'bad'));
     tr.appendChild(td(String(Math.round(100*r.r.rec))));
     tbb.appendChild(tr);});
 }
@@ -1073,19 +1052,18 @@ function syncRows(){
     e.classList.toggle('off',st==='hide');e.classList.toggle('lock',st==='lock');};
   set('c-machine','live');
   set('c-k','live');            /* k is the lever of the whole day: it reaches detection delay */
-  set('c-base',tab===T_MODE?'hide':'live');
 }
 function refresh(){syncRows();regen();draw();table();}
 function setSeg(name,v){
-  const row={machine:'c-machine',k:'c-k',base:'c-base'}[name];
+  const row={machine:'c-machine',k:'c-k'}[name];
   if(document.getElementById(row).classList.contains('lock'))return;
-  if(name==='machine')mach=v; else if(name==='k')K=+v; else if(name==='base')base=v;
+  if(name==='machine')mach=v; else if(name==='k')K=+v;
   paint(name,v);refresh();}
 function applyTab(i){tab=i;
   document.querySelectorAll('.tabbtn').forEach(function(b,j){b.className='tabbtn'+(j===i?' on':'');});
   refresh();}
 const TABS=[{name:'\\text{1. Modes}'},{name:'\\text{2. Baseline}'},{name:'\\text{3. Monitoring}'}];
-['machine','k','base'].forEach(function(nm){
+['machine','k'].forEach(function(nm){
   document.querySelectorAll('.seg[data-for="'+nm+'"] button').forEach(function(b){
     b.addEventListener('click',function(){setSeg(nm,b.getAttribute('data-val'));});});});
 document.getElementById('resetBtn').addEventListener('click',function(){seed++;refresh();});
@@ -1094,30 +1072,27 @@ const tb=document.getElementById('tabs');
 TABS.forEach(function(T,i){const b=document.createElement('button');b.className='tabbtn';
   (window.katex?katex.render(T.name,b,{throwOnError:false}):(b.textContent=T.name));
   b.onclick=function(){applyTab(i);};tb.appendChild(b);});
-['machine','k','base'].forEach(function(nm){paint(nm,{machine:mach,k:K,base:base}[nm]);});
+['machine','k'].forEach(function(nm){paint(nm,{machine:mach,k:K}[nm]);});
 applyTab(T_MODE);
 
 window.LAB={
   read:function(){
-    const o={tab:tab,machine:mach,k:K,base:base,seed:seed,
-             n:N,hist:HIST,faultStart:FAULT,limitC:LIMIT_C,modes:{},baselines:{}};
-    for(const k of [1,2,3,4]){
-      const km=kmeans(k),s=(k<2)?null:silhouette(km.Z.P.slice(0,HIST),km.train,k);
-      const n=new Array(k).fill(0);for(let i=0;i<HIST;i++)n[km.train[i]]++;
-      o.modes[k]={silhouette:s===null?null:+s.toFixed(4),sizes:n,
-                  sdPerMode:+baseline('mode',k).sd.toFixed(4)};}
-    for(const b of BASE){
-      const r=baseline(b,K);
-      o.baselines[b]={sd:+r.sd.toFixed(4),limitC:+r.limitC.toFixed(4),
-                      delay:r.delay,lead:r.lead,rec:+r.rec.toFixed(4),
-                      first:r.first,t75:r.t75};}
+    const o={tab:tab,machine:mach,k:K,seed:seed,
+             n:N,hist:HIST,faultStart:FAULT,limitC:LIMIT_C,modes:{}};
+    /* one entry per k, carrying everything all three tabs print for that row */
+    for(const k of KS){
+      const km=kmeans(k),n=new Array(k).fill(0);
+      for(let i=0;i<HIST;i++)n[km.train[i]]++;
+      const r=baseline(k);
+      o.modes[k]={sizes:n,sd:+r.sd.toFixed(4),limitC:+r.limitC.toFixed(4),
+                  delay:r.delay,lead:r.lead,rec:+r.rec.toFixed(4),
+                  first:r.first,t75:r.t75};}
     return o;},
   set:function(o){
     /* a name this page does not have is ignored, not obeyed: a caller's typo must not
        take the figure down */
     if(o.machine!=null&&MODEDEF[o.machine]){mach=o.machine;paint('machine',mach);}
     if(o.k!=null){K=+o.k;paint('k',K);}
-    if(o.base!=null&&BNAME[o.base]){base=o.base;paint('base',base);}
     if(o.seed!=null)seed=+o.seed;
     if(o.tab!=null)applyTab(o.tab); else refresh();}};
 (function(){const mC=document.getElementById('mC');
