@@ -237,8 +237,6 @@ body.distcls .wrap{height:auto;max-height:900px}   /* เนื้อหาส�
   .pg .panel .seg[data-for="k"] button:nth-child(2n){border-left:1px solid #e6e6e0!important}
   .pg .panel .seg[data-for="machine"] button:nth-child(n+3),
   .pg .panel .seg[data-for="k"] button:nth-child(n+3){border-top:1px solid #e6e6e0!important}
-  /* the third machine takes the full width, like Day 3's fifth method */
-  .pg .panel .seg[data-for="machine"] button:nth-child(3){grid-column:1 / -1;border-left:0!important}
   .pg .panel .seg[data-for="base"]{
     display:grid;grid-template-columns:1fr;width:100%;min-width:0;
     border:1px solid #e6e6e0;border-radius:8px;overflow:hidden}
@@ -256,7 +254,7 @@ body.distcls .wrap{height:auto;max-height:900px}   /* เนื้อหาส�
 </style>
 </head>
 <body class="pg">
-<h2 class="sr-only" style="position:absolute;width:1px;height:1px;overflow:hidden">One pump that runs in more than one operating mode, and what that does to a baseline. The first tab finds the modes with k-means on the operating point. The second builds the expected temperature three ways on the same healthy history and reads the residual each one leaves. The third lets the clock run into a fault and scores every baseline in the operator's units: hours to the first alarm, hours of warning over the fixed seventy five degree limit, and false alarms while the machine is still healthy.</h2>
+<h2 class="sr-only" style="position:absolute;width:1px;height:1px;overflow:hidden">One pump that runs in more than one operating mode, and what that does to a baseline. The first tab finds the modes with k-means on the watched temperature. The second builds the expected temperature two ways on the same healthy history, one mean for everything against one mean per mode, and reads the residual each one leaves. The third lets the clock run into a fault and scores both in the operator's units: hours to the first alarm, hours of warning over the fixed seventy five degree limit, and the share of the faulty hours each one flags.</h2>
 <div class="wrap">
   <div class="hdr">
     <h1 id="__pgt" data-tex="\text{Operating modes and the baseline}">Operating modes and the baseline</h1>
@@ -273,7 +271,6 @@ body.distcls .wrap{height:auto;max-height:900px}   /* เนื้อหาส�
         <span class="dlab" style="flex:0 0 auto;color:#475569;font-size:15px;font-weight:600">\(\text{Machine}\)</span>
         <div class="seg" data-for="machine">
           <button type="button" data-val="one">\(\text{One mode}\)</button>
-          <button type="button" data-val="load">\(\text{Load-driven modes}\)</button>
           <button type="button" data-val="levels">\(\text{Hidden modes}\)</button>
         </div>
       </div>
@@ -290,7 +287,6 @@ body.distcls .wrap{height:auto;max-height:900px}   /* เนื้อหาส�
         <span class="dlab" style="flex:0 0 auto;color:#475569;font-size:15px;font-weight:600">\(\text{Baseline}\)</span>
         <div class="seg" data-for="base">
           <button type="button" data-val="mean">\(\text{Mean baseline}\)</button>
-          <button type="button" data-val="reg">\(\text{Regression on flow}\)</button>
           <button type="button" data-val="mode">\(\text{Mean per mode}\)</button>
         </div>
       </div>
@@ -740,33 +736,32 @@ if (typeof document !== 'undefined') (function () {
    in every one of them. k-means is not the subject here -- it is the tool that gets the modes
    back, so that a baseline can be built inside each one.
 
-     tab 1  Modes      k-means on the operating point (flow, vibration): how many modes does
-                       this machine have, and does the silhouette agree with the k you assumed
-     tab 2  Baseline   the same healthy history, three ways to say what the temperature SHOULD
-                       be -- one mean for everything, regression on flow (Day 3's winner), one
-                       mean per mode -- and the residual each one leaves behind
+     tab 1  Modes      k-means on the watched temperature: how many modes does this machine
+                       have, and does the silhouette agree with the k you assumed
+     tab 2  Baseline   the same healthy history, two ways to say what the temperature SHOULD
+                       be -- one mean for everything, or one mean per mode -- and the residual
+                       each one leaves behind
      tab 3  Monitoring the clock runs into a fault, scored in Day 3's own readings: detection
-                       delay, lead over the fixed 75 C limit, false alarms while still healthy
+                       delay, lead over the fixed 75 C limit, and recall on the faulty hours
 
-   The trap the machine is built around, and the reason Day 3's answer is not enough: the modes
-   OVERLAP IN FLOW. A mode runs hotter than another at the SAME flow, because it is a different
-   valve line-up, not a heavier load. So regression on flow -- the method that won Day 3 --
-   cannot explain the offset either. Only knowing WHICH MODE an hour belongs to fixes it, and
-   that is what the clustering delivers.
+   RIT 2026-09-02: k-means and nothing else. A regression on load used to sit in the baseline
+   row; it is Day 3's method, it was the only thing on the page that read a second sensor, and
+   it is gone. Nothing here now predicts the temperature from anything -- the only question is
+   WHICH MODE an hour belongs to, which is the one question clustering answers.
 
    Timeline and vocabulary are Day 3's, deliberately: 96 hours split train 48 / healthy test 24
    / fault 24, alarm on |z| >= 3 two-sided, and the fixed 75 C limit stays the reference the
    model has to beat.
    ========================================================================================== */
 const N=96,HIST=48,FAULT=72,LIMZ=3,LIMIT_C=75;
-const BASE=[['mean','One mean for everything'],['reg','Regression on flow'],['mode','One mean per mode']];
-const BNAME={mean:'Mean baseline',reg:'Regression on flow',mode:'Mean per mode'};
+const BASE=['mean','mode'];
+const BNAME={mean:'Mean baseline',mode:'Mean per mode'};
 const T_MODE=0,T_BASE=1,T_MON=2;
 const C={cl:['#33618D','#1E7A56','#C07E00','#8E5AA8'],
          data:'#6E93B8',exp:'#1E7A56',lim:'#B0503A',alarm:'#C07E00',mark:'#B0503A',
          cen:'#1F2A37',ax:'#94a3b8',axtx:'#64748b',grid:'#eef1f5',fault:'#B07AAE'};
 let tab=T_MODE,mach='one',K=2,base='mode',seed=1;
-let FLOW=[],VIB=[],TEMP=[],MODE=[];
+let TEMP=[],MODE=[];
 
 function K_(t,el,d){if(!el)return;if(window.katex){try{katex.render(String(t),el,{throwOnError:false,displayMode:!!d});return;}catch(e){}}el.textContent=t;}
 function ok(v){return v!=null&&isFinite(v);}
@@ -777,48 +772,39 @@ function sdOf(a){const m=mean(a);let s=0,n=0;for(const v of a){if(!ok(v))continu
 /* ---------------- the machine ----------------
    Modes come in blocks of hours, not one draw per hour: a pump holds a line-up for a shift and
    then changes, which is what makes a mode visible in a time series at all. Inside a mode the
-   temperature is 47 + 0.14 x flow; the mode adds its own offset on top. The flows of the modes
-   OVERLAP on purpose -- that is what stops regression on flow from seeing the difference. */
-/* Four machines, in the order Day 4 teaches them.
+   temperature wanders with the load the pump happens to be at; the mode adds its own offset on
+   top of that, and NOTHING ON THE MACHINE DECLARES IT. That is the whole difficulty: the offset
+   is real, it is worth several degrees, and no sensor names it.
 
-   They are laid out in the order the buttons carry, and that order is the argument: each
-   rung needs the day's new tool a little more than the one before it.
+   Two machines, and the button order is the argument.
 
      one      Day 3's world -- one mode, one baseline, and nothing new to do.
-     load     two modes, but they ARE load levels: more flow, more heat, so Day 3's
-              regression still explains them and still wins. The tool is not needed yet.
-     levels   Session 1's own file: two levels with nothing driving them. There is nothing to
-              regress on, one mean is wrong in both modes, and only a baseline that knows
-              which mode an hour belongs to can be right. This is what the day is for. */
+     levels   Session 1's own file: two levels with nothing announcing them. One mean is wrong
+              in both, and only a baseline that knows which mode an hour belongs to can be
+              right in either. This is what the day is for. */
 const MODEDEF={
-  levels:{n:2,fsep:0,vsep:0,tsep:8},
-  load:  {n:2,fsep:16,vsep:0.9,tsep:0},
-  one:   {n:1,fsep:0,vsep:0,tsep:0}};
+  one:   {n:1,tsep:0},
+  levels:{n:2,tsep:8}};
 function regen(){
   const r=PG.rng(seed*7919+29);
   const g=function(){let s=0;for(let i=0;i<12;i++)s+=r.next();return s-6;};
   const D=MODEDEF[mach],nm=D.n;
-  FLOW=[];VIB=[];TEMP=[];MODE=[];
+  TEMP=[];MODE=[];
   let m=0,left=0;
   for(let t=0;t<N;t++){
     if(left<=0){m=Math.floor(r.next()*nm);left=6+Math.floor(r.next()*7);}   /* 6-12 h blocks */
     left--;
-    const f=100+4.0*g()+m*D.fsep;
-    const v=1.3+m*D.vsep+0.16*g();
-    let temp=47+0.14*f+m*D.tsep+0.5*g();
+    const load=100+4.0*g();                   /* the hour's load: it moves the temperature */
+    let temp=47+0.14*load+m*D.tsep+0.5*g();
     if(t>=FAULT)temp+=0.70*(t-FAULT+1);       /* the fault: a slow drift, Day 3's shape */
-    FLOW.push(f);VIB.push(v);TEMP.push(temp);MODE.push(m);}
+    TEMP.push(temp);MODE.push(m);}
 }
 
-/* ---------------- k-means on the operating point ----------------
-   The clustering reads flow and vibration -- the two sensors that say what the machine is
-   DOING. Temperature is deliberately kept out of it: it is the variable being judged, and a
-   cluster built on it would move with the fault and hide the very thing we are looking for.
-   Centres are fitted on the healthy history only, then applied to every hour: Phase I / Phase
-   II, the same rule as every baseline in this course. */
-/* Session 1's rule, and the only one this page uses: cluster the WATCHED column itself,
-   standardised on the healthy history and fitted there only -- the fault must never be
-   allowed to move a centre. */
+/* ---------------- k-means on the watched column ----------------
+   Session 1's rule, and the only one this page uses: cluster the WATCHED column itself,
+   standardised on the healthy history and fitted there only -- the fault must never be allowed
+   to move a centre. Centres come from the training half and are then applied unchanged to every
+   hour: Phase I / Phase II, the same rule as every baseline in this course. */
 function opPoints(){
   const c=TEMP.slice(0,HIST),mc=mean(c),sc=sdOf(c)||1;
   const z=[];for(let i=0;i<N;i++)z.push([(TEMP[i]-mc)/sc,0]);
@@ -867,7 +853,7 @@ function silhouette(P,a,k){
   return tot/a.length;
 }
 
-/* ---------------- three baselines, and what each one leaves behind ----------------
+/* ---------------- two baselines, and what each one leaves behind ----------------
    Each is fitted on the healthy history only and then applied unchanged to the test hours. The
    alarm rule is Day 3's, untouched: two-sided, three sigma of the training residual. */
 function baseline(kind,k){
@@ -875,11 +861,6 @@ function baseline(kind,k){
   if(kind==='mean'){
     const m=mean(TEMP.slice(0,HIST));
     for(let i=0;i<N;i++)exp[i]=m;
-  }else if(kind==='reg'){
-    let n=0,sx=0,sy=0,sxx=0,sxy=0;
-    for(let i=0;i<HIST;i++){n++;sx+=FLOW[i];sy+=TEMP[i];sxx+=FLOW[i]*FLOW[i];sxy+=FLOW[i]*TEMP[i];}
-    const d=n*sxx-sx*sx,b1=d?(n*sxy-sx*sy)/d:0,b0=(sy-b1*sx)/n;
-    for(let i=0;i<N;i++)exp[i]=b0+b1*FLOW[i];
   }else{
     const km=kmeans(k),s=new Array(k).fill(0),c=new Array(k).fill(0);
     for(let i=0;i<HIST;i++){s[km.train[i]]+=TEMP[i];c[km.train[i]]++;}
@@ -1051,10 +1032,9 @@ function table(){
   if(tab===T_BASE){
     head([['\\text{baseline}',0],['\\text{residual sd},\\ ^\\circ\\text{C}',1],
           ['\\text{control limit},\\ ^\\circ\\text{C}',1],['\\text{what it assumes}',0]]);
-    const rows=BASE.map(function(b){return {k:b[0],r:baseline(b[0],K)};});
+    const rows=BASE.map(function(b){return {k:b,r:baseline(b,K)};});
     let bi=0,bv=Infinity;rows.forEach(function(r,i){if(r.r.sd<bv){bv=r.r.sd;bi=i;}});
     const WHY={mean:'\\text{one normal level}',
-               reg:'\\text{temperature follows flow}',
                mode:'\\text{one normal level per mode}'};
     rows.forEach(function(r,i){
       const tr=document.createElement('tr');
@@ -1068,7 +1048,7 @@ function table(){
     return;}
   head([['\\text{baseline}',0],['\\text{detection delay, h}',1],
         ['\\text{lead vs 75 °C, h}',1],['\\text{recall, \\%}',1]]);
-  const rows=BASE.map(function(b){return {k:b[0],r:baseline(b[0],K)};});
+  const rows=BASE.map(function(b){return {k:b,r:baseline(b,K)};});
   let bv=Infinity;
   rows.forEach(function(r){if(r.r.delay!==null&&r.r.delay<bv)bv=r.r.delay;});
   rows.forEach(function(r){
@@ -1126,7 +1106,7 @@ window.LAB={
       const n=new Array(k).fill(0);for(let i=0;i<HIST;i++)n[km.train[i]]++;
       o.modes[k]={silhouette:s===null?null:+s.toFixed(4),sizes:n,
                   sdPerMode:+baseline('mode',k).sd.toFixed(4)};}
-    for(const b of ['mean','reg','mode']){
+    for(const b of BASE){
       const r=baseline(b,K);
       o.baselines[b]={sd:+r.sd.toFixed(4),limitC:+r.limitC.toFixed(4),
                       delay:r.delay,lead:r.lead,rec:+r.rec.toFixed(4),
@@ -1137,7 +1117,7 @@ window.LAB={
        take the figure down */
     if(o.machine!=null&&MODEDEF[o.machine]){mach=o.machine;paint('machine',mach);}
     if(o.k!=null){K=+o.k;paint('k',K);}
-    if(o.base!=null){base=o.base;paint('base',base);}
+    if(o.base!=null&&BNAME[o.base]){base=o.base;paint('base',base);}
     if(o.seed!=null)seed=+o.seed;
     if(o.tab!=null)applyTab(o.tab); else refresh();}};
 (function(){const mC=document.getElementById('mC');
