@@ -871,12 +871,19 @@ function sdOf(a){const m=mean(a);let s=0,n=0;for(const v of a){if(!ok(v))continu
    to this page's scale. They are the two ways k-means can find the modes and still leave you
    worse off: one limit shared between a quiet mode and a noisy one, and modes so close that
    splitting them costs more than it pays. */
+/* EVERY MACHINE RUNS IN THE SAME BAND (RIT 2026-09-04, on whether to keep the lead column).
+   These are all the same pump; what differs is how its modes are arranged, not how hot it runs.
+   Two of them used to sit a whole mode-gap cooler, so the plant's fixed 75 C thermostat was out
+   of reach and the lead column read "--" for every row on them -- an empty column, which is
+   what got two earlier columns deleted. `base` lifts them so every machine's hottest mode sits
+   near 69 C. It shifts the temperature and nothing else: z, the limits, the delays and the
+   recalls are computed after standardising, so they are unchanged to the last digit. */
 const MODEDEF={
-  one:    {n:1,tsep:0,  blo:6,bhi:12},
+  one:    {n:1,tsep:0,  blo:6,bhi:12,base:8.0},
   levels: {n:2,tsep:8,  blo:6,bhi:12},
   three:  {n:3,tsep:4,  blo:3,bhi:6},
   uneven: {n:2,tsep:8,  blo:6,bhi:12,spread:[0.5,2.0]},
-  overlap:{n:2,tsep:1.5,blo:6,bhi:12}};
+  overlap:{n:2,tsep:1.5,blo:6,bhi:12,base:6.5}};
 /* one week of this machine. regen() puts the CURRENT one in the globals; machineStats()
    below walks 40 others through the same function, because a cost measured with different
    code from the one on screen is not the cost of what is on screen. */
@@ -890,7 +897,7 @@ function genWeek(m,sd){
                 left=D.blo+Math.floor(r.next()*(D.bhi-D.blo+1));}   /* one line-up, held */
     left--;
     const load=100+4.0*g();                   /* the hour's load: it moves the temperature */
-    let temp=47+0.14*load+md*D.tsep+0.5*g()*(D.spread?D.spread[md]:1);
+    let temp=47+(D.base||0)+0.14*load+md*D.tsep+0.5*g()*(D.spread?D.spread[md]:1);
     /* THE FAULT IS THE SIZE THE COURSE MAKES IT (RIT 2026-09-04). A 0.70 C/hour ramp
        reached +17 C and broke through even the 12.4 C limit that one mean over two levels
        produces, so the wrong baseline still eventually worked -- while the course's own
@@ -970,7 +977,10 @@ function baseline(k,T,sk){
     if(i>=FAULT){tp++;if(first===null)first=i;}
     else fp++;}
   let t75=null;for(let i=FAULT;i<N;i++)if(T[i]>=LIMIT_C){t75=i;break;}
+  /* precision as Day 3 computes it (playground_pdm_baseline.html:343): of the hours this
+     baseline flagged, the share that really were faulty -- null when it flagged nothing */
   return {k:k,exp:exp,res:res,sd:sd,z:z,limitC:LIMZ*sd,mu:mu,fp:fp,
+          prec:(tp+fp)?tp/(tp+fp):null,
           /* the hours behind the THINNEST mode. Every extra mode is fitted on fewer hours than
              the last, and a limit learned from nine hours is a limit nobody should trust --
              this is the number that says so, and it moves on every week, which the false alarm
@@ -1296,7 +1306,8 @@ function table(){
   const ST=machineStats(mach);
   head([['\\text{modes }(k)',0],
         ['\\text{detection delay, h}',1],['\\text{lead vs 75 °C, h}',1],
-        ['\\text{recall, \\%}',1],['\\text{false-alarm weeks, \\%}',1]]);
+        ['\\text{precision, \\%}',1],['\\text{recall, \\%}',1],
+        ['\\text{false-alarm weeks, \\%}',1]]);
   /* ONE WINNER: THE FEWEST MODES THAT REACH THE EARLIEST ALARM. The mark used to go to EVERY
      row that tied on the earliest delay, so k = 2, 3 and 4 all came up green and the table
      recommended nothing. The outcome still decides first -- the earliest alarm, never the
@@ -1327,6 +1338,7 @@ function table(){
                       r.r.delay===null?'bad':(w?'win':'')));
     tr.appendChild(td(r.r.lead===null?'\\text{--}':String(r.r.lead),
                       (r.r.lead!==null&&r.r.lead>0)?'win':'bad'));
+    tr.appendChild(td(r.r.prec===null?'\\text{--}':String(Math.round(100*r.r.prec))));
     tr.appendChild(td(String(Math.round(100*r.r.rec))));
     /* the cost, over 40 weeks: a one-week count of quiet-hour alarms is 0 or 1 and carries
        nothing. Marked red on every row that false-alarms in more weeks than the recommended
@@ -1401,7 +1413,8 @@ window.LAB={
       const km=kmeans(k),n=new Array(k).fill(0);
       for(let i=0;i<HIST;i++)n[km.train[i]]++;
       const r=baseline(k);
-      o.modes[k]={drift:+ST[k].drift.toFixed(4),faWeeks:+ST[k].faWeeks.toFixed(4),sizes:n,means:r.mu.map(function(v){return +v.toFixed(4);}),
+      o.modes[k]={drift:+ST[k].drift.toFixed(4),faWeeks:+ST[k].faWeeks.toFixed(4),sizes:n,
+                  prec:r.prec===null?null:+r.prec.toFixed(4),means:r.mu.map(function(v){return +v.toFixed(4);}),
                   smallest:r.smallest,fp:r.fp,
                   sd:+r.sd.toFixed(4),limitC:+r.limitC.toFixed(4),
                   delay:r.delay,lead:r.lead,rec:+r.rec.toFixed(4),

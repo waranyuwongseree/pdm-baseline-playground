@@ -844,7 +844,10 @@ function score(v,lim){
   for(let i=HIST;i<N;i++){
     if(!(v[i]>=lim))continue;
     if(i>=FAULT){tp++;if(first===null)first=i;}else fp++;}
-  return {first:first,delay:first===null?null:first-FAULT,rec:tp/(N-FAULT),fp:fp};
+  /* precision as Day 3 computes it (playground_pdm_baseline.html:343): of the hours this rule
+     flagged, the share that really were faulty -- null when it flagged nothing */
+  return {first:first,delay:first===null?null:first-FAULT,rec:tp/(N-FAULT),fp:fp,
+          prec:(tp+fp)?tp/(tp+fp):null};
 }
 /* ---------------- what it costs over 40 weeks ----------------
    One week cannot price a false alarm: the quiet hours are 24 and the count comes out 0 or 1.
@@ -1056,7 +1059,8 @@ function table(){
       tbb.appendChild(tr);});
     return;}
   const CT=cost(mach);
-  head([['\\text{Method}',0],['\\text{detection delay, h}',1],['\\text{recall, \\%}',1],
+  head([['\\text{Method}',0],['\\text{detection delay, h}',1],
+        ['\\text{precision, \\%}',1],['\\text{recall, \\%}',1],
         ['\\text{false-alarm weeks, \\%}',1]]);
   let bv=Infinity;
   rows.forEach(function(r){if(r.r.delay!==null&&r.r.delay<bv)bv=r.r.delay;});
@@ -1069,6 +1073,7 @@ function table(){
     tr.appendChild(th(nm[r.k],w?'win':''));
     tr.appendChild(td(r.r.delay===null?'\\text{never}':String(r.r.delay),
                       r.r.delay===null?'bad':(w?'win':'')));
+    tr.appendChild(td(r.r.prec===null?'\\text{--}':String(Math.round(100*r.r.prec))));
     tr.appendChild(td(String(Math.round(100*r.r.rec))));
     tr.appendChild(td(String(Math.round(100*CT[r.k])),
                       (best&&CT[r.k]>CT[best.k])?'bad':(w?'win':'')));
@@ -1129,6 +1134,7 @@ window.LAB={
       let flag=0;for(let i=0;i<HIST;i++)if(S[k][i]>=limOf(k))flag++;
       let hb=-Infinity;for(let i=0;i<HIST;i++)hb=Math.max(hb,S[k][i]);
       o.stats[k]={limit:limOf(k),delay:sc.delay,first:sc.first,
+                  prec:sc.prec===null?null:+sc.prec.toFixed(4),
                   peakBaseline:+hb.toFixed(4),headroom:+(limOf(k)-hb).toFixed(4),
                   rec:+sc.rec.toFixed(4),fp:sc.fp,flaggedHealthy:flag,
                   faWeeks:+CT[k].toFixed(4),
