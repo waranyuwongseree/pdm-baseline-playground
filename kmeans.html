@@ -237,8 +237,14 @@ body.distcls .wrap{height:auto;max-height:900px}   /* เนื้อหาส�
   .pg .panel .seg[data-for="k"] button:nth-child(2n){border-left:1px solid #e6e6e0!important}
   .pg .panel .seg[data-for="machine"] button:nth-child(n+3),
   .pg .panel .seg[data-for="k"] button:nth-child(n+3){border-top:1px solid #e6e6e0!important}
-  /* three machines in a two-column grid: the third takes the whole row */
-  .pg .panel .seg[data-for="machine"] button:nth-child(3){grid-column:1 / -1;border-left:0!important}
+  /* THREE MACHINES, THREE EQUAL BUTTONS, ONE ROW (RIT 2026-09-03: "ไหนล่ะเครื่องสาม mode
+     ไม่เห็นขึ้นเลย" -- it was on the page, but the third one spanned the full width under the
+     other two, which reads as a caption over a control, not as the third of three choices).
+     A row of equals cannot be mistaken for a heading. */
+  .pg .panel .seg[data-for="machine"]{grid-template-columns:1fr 1fr 1fr}
+  .pg .panel .seg[data-for="machine"] button{padding:6px 2px}
+  .pg .panel .seg[data-for="machine"] button+button{
+    border-left:1px solid #e6e6e0!important;border-top:0!important}
   /* Day 3's four table marks, copied verbatim (they were missing here, so tr.sel and the win
      marks painted nothing at all until 2026-09-03): the row for the k in the rail is tinted,
      the best outcome is green, an unusable one is red */
