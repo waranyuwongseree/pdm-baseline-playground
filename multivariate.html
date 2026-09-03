@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Two sensors, judged together</title>
+<title>Univariate or multivariate</title>
 <style>
 /* ============================================================================
  * pg_style.css — shared visual identity for every playground
@@ -241,7 +241,6 @@ body.distcls .wrap{height:auto;max-height:900px}   /* เนื้อหาส�
     font-size:14px;padding:6px 3px;cursor:pointer;border:0!important;text-align:center}
   .pg .panel .seg[data-for="fault"] button+button,
   .pg .panel .seg[data-for="model"] button+button{border-top:1px solid #e6e6e0!important}
-  #tnote{font-size:13px;color:#64748b;padding:6px 10px 0;line-height:1.45}
   .pg .mtab td.win,.pg .mtab th.win{color:#1E7A56;font-weight:600}
   .pg .mtab td.bad{color:#B0503A}
   .pg .mtab td.lft{text-align:left;font-weight:400;color:#475569}
@@ -260,14 +259,13 @@ body.distcls .wrap{height:auto;max-height:900px}   /* เนื้อหาส�
 <h2 class="sr-only" style="position:absolute;width:1px;height:1px;overflow:hidden">Two sensors on one machine that normally rise and fall together, and what happens when a fault moves one of them without the other. The first tab is the data itself: both sensors hour by hour beside the same hours plotted against each other, with the square each sensor is judged inside on its own and the ellipse the pair is judged inside. The second follows the chosen rule through every hour against its limit. The third scores both rules in the operator's units: hours to the first alarm, the share of faulty hours flagged, and how many weeks in forty carry a false alarm.</h2>
 <div class="wrap">
   <div class="hdr">
-    <h1 id="__pgt" data-tex="\text{Two sensors, judged together}">Two sensors, judged together</h1>
+    <h1 id="__pgt" data-tex="\text{Univariate or multivariate}">Univariate or multivariate</h1>
     <div class="tabs" id="tabs"></div>
   </div>
   <div class="layout">
     <div class="stage">
       <div class="canvasbox" id="boxM"><canvas id="mC"></canvas></div>
-      <div class="tblbox"><table class="mtab" id="tbl"><thead><tr id="thr"></tr></thead><tbody id="tbb"></tbody></table>
-        <div id="tnote"></div></div>
+      <div class="tblbox"><table class="mtab" id="tbl"><thead><tr id="thr"></tr></thead><tbody id="tbb"></tbody></table></div>
     </div>
     <div class="rail">
     <div class="panel">
@@ -726,7 +724,7 @@ if (typeof document !== 'undefined') (function () {
 </script>
 <script>
 /* ============================================================================================
-   TWO SENSORS, JUDGED TOGETHER  ·  Day 4 Session 2 of the KNIME PdM course, on the Day 3 shell
+   UNIVARIATE OR MULTIVARIATE  ·  Day 4 Session 2 of the KNIME PdM course, on the Day 3 shell
 
    ONE QUESTION ONLY (RIT 2026-09-03): does judging two sensors ONE AT A TIME find the same
    faults as judging them AS A PAIR. Motor current and bearing temperature rise and fall
@@ -764,7 +762,7 @@ const LAM=0.2;                       /* the workflow's own: 2/(win 9 + 1) */
    when MEWMA arrived only the data followed it in -- the plot drew MEWMA and both labels
    still said T2. A label that disagrees with the picture is worse than no label. */
 const CHARTNAME=RNAME;   /* the axis, the key and the table all read one map */
-const T_DATA=0,T_RULE=1,T_MON=2;
+const T_DATA=0,T_MON=1;
 const C={s1:'#33618D',s2:'#C07E00',stat:'#1E7A56',lim:'#B0503A',mark:'#B0503A',
          data:'#6E93B8',ax:'#94a3b8',axtx:'#64748b',grid:'#eef1f5',fault:'#B07AAE',ell:'#1F2A37'};
 let tab=T_DATA,mach='one',rule='t2',seed=1;
@@ -881,7 +879,6 @@ function annotate(c,x,y,txt,col,align){
   WORDS+=String(txt).trim().split(/\s+/).length;
   c.fillStyle=col||C.axtx;c.font='12.5px KaTeX_Main';
   c.textAlign=align||'left';c.textBaseline='middle';c.fillText(txt,x,y);}
-function tnote(s){const e=document.getElementById("tnote");if(e)e.textContent=s||"";}
 function series(c,arr,A,col,w){c.strokeStyle=col;c.lineWidth=w||1.3;c.beginPath();
   let on=false;for(let i=0;i<arr.length;i++){const v=arr[i];if(!ok(v)){on=false;continue;}
     const x=A.PX(i),y=A.PY(v);on?c.lineTo(x,y):c.moveTo(x,y);on=true;}c.stroke();}
@@ -964,7 +961,7 @@ function draw(){
      test เข้ามาทำไม"). It draws hours 0..HIST, the hours the mean, the spread and the
      correlation are measured from -- no fault, no alarms, nothing to score. Day 3's history tab
      does not even generate the fault. Tab 3 draws the monitored hours. */
-  const i0=(tab===T_MON)?HIST:0, i1=(tab===T_RULE)?HIST:N;
+  const i0=HIST, i1=N;
   const STRIP=10,KEY2=6;
   const half=Math.floor((B-T-STRIP-KEY2-8)/2);
   const box1={l:L,r:R,t:T+STRIP,b:T+STRIP+half},
@@ -1010,7 +1007,7 @@ function table(){
     /* the point of the tab as three numbers: both rules are set to the same false-alarm rate,
        and on the faulty hours one of them moves and the other does not */
     head([['\\text{Method}',0],['\\text{control limit}',1],
-          ['\\text{highest, healthy hours}',1],['\\text{highest, faulty hours}',1]]);
+          ['\\text{highest, healthy}',1],['\\text{highest, fault}',1]]);
     rows.forEach(function(r){
       const tr=document.createElement('tr');
       const hi1=Math.max.apply(null,r.v.slice(0,FAULT)),hi2=Math.max.apply(null,r.v.slice(FAULT));
@@ -1019,37 +1016,10 @@ function table(){
       tr.appendChild(td(hi1.toFixed(2)));
       tr.appendChild(td(hi2.toFixed(2),hi2>=limOf(r.k)?'win':'bad'));
       tbb.appendChild(tr);});
-    tnote('Both limits are set for the same false-alarm rate. Read the last two columns: a '+
-          'rule whose highest value during the fault never reaches its limit cannot find that '+
-          'fault at all. Hours 0 to '+HIST+' are where normal is measured from.');
-    return;}
-  if(tab===T_RULE){
-    /* THE BASELINE TAB HOLDS THE BASELINE AND NOTHING ELSE (RIT 2026-09-03). What belongs
-       here is what these 48 hours are worth: the limit they produce, the highest the statistic
-       reaches inside them, and the headroom between the two. What does NOT belong here is an
-       exceedance count or a first alarm hour -- an hour cannot be an anomaly against a limit
-       it helped define, and the test hours are not on this tab at all. */
-    head([['\\text{Method}',0],['\\text{what it learns}',0],['\\text{control limit}',1],
-          ['\\text{highest, baseline hours}',1]]);
-    const learned={maxz:'\\text{a mean and a spread per sensor}',
-                   t2:'\\text{...and the correlation between them}'};
-    rows.forEach(function(r){
-      const tr=document.createElement('tr');
-      if(r.k===rule)tr.className='sel';
-      let hi=-Infinity;
-      for(let i=0;i<HIST;i++)hi=Math.max(hi,r.v[i]);
-      tr.appendChild(th(nm[r.k]));
-      tr.appendChild(td(learned[r.k],'lft'));
-      tr.appendChild(td(limOf(r.k).toFixed(2)));
-      tr.appendChild(td(hi.toFixed(2)));
-      tbb.appendChild(tr);});
-    tnote('The baseline is hours 0 to '+HIST+', and this tab shows nothing else: no fault, no '+
-          'alarms, nothing scored. Both limits are set for the same false-alarm rate, so on '+
-          'these hours both statistics stay under their own limit with room to spare.');
     return;}
   const CT=cost(mach);
   head([['\\text{Method}',0],['\\text{detection delay, h}',1],['\\text{recall, \\%}',1],
-        ['\\text{false alarms, h}',1],['\\text{false-alarm weeks, \\%}',1]]);
+        ['\\text{false-alarm weeks, \\%}',1]]);
   let bv=Infinity;
   rows.forEach(function(r){if(r.r.delay!==null&&r.r.delay<bv)bv=r.r.delay;});
   let best=null;
@@ -1062,14 +1032,9 @@ function table(){
     tr.appendChild(td(r.r.delay===null?'\\text{never}':String(r.r.delay),
                       r.r.delay===null?'bad':(w?'win':'')));
     tr.appendChild(td(String(Math.round(100*r.r.rec))));
-    tr.appendChild(td(String(r.r.fp),r.r.fp?'bad':''));
     tr.appendChild(td(String(Math.round(100*CT[r.k])),
                       (best&&CT[r.k]>CT[best.k])?'bad':(w?'win':'')));
     tbb.appendChild(tr);});
-  tnote('MEWMA is the pair statistic with a memory: \u03bb = '+LAM.toFixed(2)+', the '+
-        'workflow\u2019s own. false-alarm weeks is measured over 40 weeks of this machine \u2014 '+
-        'the share in which the method cried wolf in the quiet hours. The rest is the week '+
-        'on screen.');
 }
 
 /* ---------------- rail, tabs, wiring ---------------- */
@@ -1098,7 +1063,7 @@ function setSeg(name,v){
 function applyTab(i){tab=i;
   document.querySelectorAll('.tabbtn').forEach(function(b,j){b.className='tabbtn'+(j===i?' on':'');});
   refresh();}
-const TABS=[{name:'\\text{1. The pair}'},{name:'\\text{2. Baseline}'},{name:'\\text{3. Monitoring}'}];
+const TABS=[{name:'\\text{1. The data}'},{name:'\\text{2. Monitoring}'}];
 ['fault','model'].forEach(function(nm){
   document.querySelectorAll('.seg[data-for="'+nm+'"] button').forEach(function(b){
     b.addEventListener('click',function(){setSeg(nm,b.getAttribute('data-val'));});});});
@@ -1116,7 +1081,7 @@ window.LAB={
     const S=stats(),CT=cost(mach);
     /* the hour range the tab actually draws -- tab 2 is the baseline, so the gate can hold
        it to 0..HIST-1 instead of trusting that the picture looks right */
-    const shown=(tab===T_MON)?[HIST,N-1]:(tab===T_RULE?[0,HIST-1]:[0,N-1]);
+    const shown=(tab===T_MON)?[HIST,N-1]:[0,N-1];
     const chartLabel=(tab===T_DATA)?null:CHARTNAME[rule];
     const o={tab:tab,fault:mach,model:rule,seed:seed,shownHours:shown,chartLabel:chartLabel,
              figureWords:WORDS,
@@ -1139,7 +1104,8 @@ window.LAB={
     if(f!=null&&FAULTDEF[f]){mach=f;paint('fault',mach);}
     if(m!=null&&RNAME[m]){rule=m;paint('model',rule);}
     if(o.seed!=null)seed=+o.seed;
-    if(o.tab!=null)applyTab(o.tab); else refresh();}};
+    if(o.tab!=null)applyTab(Math.max(0,Math.min(TABS.length-1,+o.tab)));
+    else refresh();}};
 (function(){const mC=document.getElementById('mC');
   function fix(){if(mC.clientWidth>0&&(Math.abs(mC.width-Math.round(mC.clientWidth))>0.6||
     Math.abs(mC.height-Math.round(mC.clientHeight))>0.6))draw();}
