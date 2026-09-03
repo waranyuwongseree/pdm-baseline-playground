@@ -1016,8 +1016,8 @@ function axes(c,box,x0,x1,y0,y1,xl,yl,noY){
   c.textAlign='center';c.textBaseline='top';
   tk(x0,x1,4).forEach(function(v){c.fillText(nice(v),PX(v),box.b+5);});
   if(xl)c.fillText(xl,(box.l+box.r)/2,box.b+21);
-  if(yl){c.save();c.translate(box.l-40,(box.t+box.b)/2);c.rotate(-Math.PI/2);
-    c.textBaseline='bottom';c.fillText(yl,0,0);c.restore();}
+  if(yl){c.save();ROT=true;c.translate(box.l-40,(box.t+box.b)/2);c.rotate(-Math.PI/2);
+    c.textBaseline='bottom';c.fillText(yl,0,0);c.restore();ROT=false;}
   return {PX:PX,PY:PY};
 }
 /* THE SAME LINE READ IN DEGREES. residual = z x sd, so the right-hand ruler is the z ruler
@@ -1038,8 +1038,6 @@ function rulerC(c,box,A,z0,z1,sd){
     if(y>=box.t-1&&y<=box.b+1)c.fillText(nice(v),box.r+5,y);});
   c.save();c.translate(box.r+34,(box.t+box.b)/2);c.rotate(-Math.PI/2);
   c.textAlign='center';c.textBaseline='bottom';c.fillText('°C',0,0);c.restore();}
-function note(c,box,s){c.fillStyle=C.axtx;c.font='12.5px KaTeX_Main';
-  c.textAlign='left';c.textBaseline='top';c.fillText(s,box.l+6,box.t+4);}
 function series(c,arr,A,col,w){c.strokeStyle=col;c.lineWidth=w||1.3;c.beginPath();
   let on=false;for(let i=0;i<arr.length;i++){const v=arr[i];if(!ok(v)){on=false;continue;}
     const x=A.PX(i),y=A.PY(v);on?c.lineTo(x,y):c.moveTo(x,y);on=true;}c.stroke();}
@@ -1050,9 +1048,30 @@ function hline(c,box,A,v,col,dash){c.strokeStyle=col;c.lineWidth=1.5;if(dash)c.s
 function pad(a,extra){const lo=Math.min.apply(null,a),hi=Math.max.apply(null,a);
   const p=(hi-lo)*(extra||0.10)||1;return [lo-p,hi+p];}
 
+/* EVERY WORD DRAWN ON THE CANVAS IS RECORDED (RIT 2026-09-03: "ตัวหนังสือทับเส้นทับกราฟ").
+   One shim over fillText, installed for the duration of a draw, so tick numbers, axis labels
+   and annotations are all caught without a second list to keep in step. The gate reads TEXTS
+   and asks whether every word is big enough and whether any word sits on data or on another
+   word. Rotated strings are marked: their box is not axis-aligned and they live outside the
+   plot, so the overlap test skips them instead of guessing. */
+let TEXTS=[],ROT=false;
+function logText(c){
+  if(c.__logged)return;c.__logged=true;
+  const f=c.fillText.bind(c);
+  c.fillText=function(s,x,y){
+    const size=parseFloat(c.font)||12,w=c.measureText(s).width;
+    let x0=x;
+    if(c.textAlign==='center')x0=x-w/2; else if(c.textAlign==='right')x0=x-w;
+    let y0=y;
+    if(c.textBaseline==='middle')y0=y-size*0.55;
+    else if(c.textBaseline==='bottom')y0=y-size*0.85;
+    TEXTS.push({s:String(s),x:x0,y:y0,w:w,h:size*1.05,size:size,rot:ROT,
+                col:String(c.fillStyle)});
+    return f(s,x,y);};}
 function draw(){
   const cv=document.getElementById('mC'),c=ctxOf(cv),W=cv.clientWidth,H=cv.clientHeight;
   c.clearRect(0,0,W,H);
+  logText(c);TEXTS=[];
   const L=58,R=W-14,T=16,B=H-32;
   if(tab===T_MODE){
     /* TWO VIEWS OF THE SAME HOURS (RIT 2026-08-31): the history in time, and the shape those
@@ -1104,7 +1123,6 @@ function draw(){
       c.lineTo(xe(r.b+0.5),A1.PY(mu[r.m]));c.stroke();});
     c.setLineDash([]);
     c.restore();
-    note(c,box1,'healthy history  ·  one band per mode');
     /* the same hours along the same axis. STACKED BY MODE, never painted with the bin's
        majority: a bin holding hours from two modes IS mixed, and collapsing it to one colour
        made neighbouring bins flip at k = 3 until the shape stopped reading as a shape. (The
@@ -1144,8 +1162,6 @@ function draw(){
   series(c,b.exp,A1,C.exp,2.2);
   c.restore();
   if(tab===T_MON){hline(c,box1,A1,LIMIT_C,C.lim,[3,3]);vline(c,box1,A1,FAULT,C.fault);}
-  note(c,box1,(tab===T_MON?'test hours  ·  ':'healthy history  ·  ')+KNAME(K)+
-    '  ·  sd '+b.sd.toFixed(2)+' °C');
   const zr=(tab===T_MON)?[-6,14]:[-6,6];
   const A2=axes(c,box2,i0,i1-1,zr[0],zr[1],'hour','residual ÷ sd  (z)');
   c.save();c.beginPath();c.rect(box2.l,box2.t,box2.r-box2.l,box2.b-box2.t);c.clip();
@@ -1162,10 +1178,8 @@ function draw(){
     if(b.first!==null){c.strokeStyle=C.alarm;c.lineWidth=1.8;c.setLineDash([3,3]);
       c.beginPath();c.moveTo(A2.PX(b.first),box2.t);c.lineTo(A2.PX(b.first),box2.b);c.stroke();
       c.setLineDash([]);}
-    note(c,box2,b.first===null?'no alarm':
-      ('first alarm  ·  '+b.delay+' h after the fault'));
   }else{
-    note(c,box2,'control limit  ± '+b.limitC.toFixed(2)+' °C  ·  3 sd');}
+}
 }
 
 /* ---------------- the table ---------------- */
@@ -1360,6 +1374,7 @@ window.LAB={
                   sd:+r.sd.toFixed(4),limitC:+r.limitC.toFixed(4),
                   delay:r.delay,lead:r.lead,rec:+r.rec.toFixed(4),
                   first:r.first,t75:r.t75};}
+    o.texts=TEXTS.map(function(t){return {s:t.s,x:+t.x.toFixed(1),y:+t.y.toFixed(1),w:+t.w.toFixed(1),h:+t.h.toFixed(1),size:t.size,rot:t.rot,col:t.col};});
     return o;},
   set:function(o){
     /* a name this page does not have is ignored, not obeyed: a caller's typo must not

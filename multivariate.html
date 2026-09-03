@@ -865,8 +865,8 @@ function axes(c,box,x0,x1,y0,y1,xl,yl,noXlab){
   c.textAlign='center';c.textBaseline='top';
   if(!noXlab)tk(x0,x1,4).forEach(function(v){c.fillText(nice(v),PX(v),box.b+5);});
   if(xl)c.fillText(xl,(box.l+box.r)/2,box.b+21);
-  if(yl){c.save();c.translate(box.l-40,(box.t+box.b)/2);c.rotate(-Math.PI/2);
-    c.textAlign='center';c.textBaseline='bottom';c.fillText(yl,0,0);c.restore();}
+  if(yl){c.save();ROT=true;c.translate(box.l-40,(box.t+box.b)/2);c.rotate(-Math.PI/2);
+    c.textAlign='center';c.textBaseline='bottom';c.fillText(yl,0,0);c.restore();ROT=false;}
   return {PX:PX,PY:PY};
 }
 /* THE ONLY WAY ANYTHING IS WRITTEN ON THE CANVAS outside the axes, and it counts what it
@@ -889,9 +889,30 @@ function hline(c,box,A,v,col,dash){c.strokeStyle=col;c.lineWidth=1.5;if(dash)c.s
 function dot(c,x,y,col,rad,alpha){c.fillStyle=col;c.globalAlpha=alpha===undefined?1:alpha;
   c.beginPath();c.arc(x,y,rad,0,6.284);c.fill();c.globalAlpha=1;}
 
+/* EVERY WORD DRAWN ON THE CANVAS IS RECORDED (RIT 2026-09-03: "ตัวหนังสือทับเส้นทับกราฟ").
+   One shim over fillText, installed for the duration of a draw, so tick numbers, axis labels
+   and annotations are all caught without a second list to keep in step. The gate reads TEXTS
+   and asks whether every word is big enough and whether any word sits on data or on another
+   word. Rotated strings are marked: their box is not axis-aligned and they live outside the
+   plot, so the overlap test skips them instead of guessing. */
+let TEXTS=[],ROT=false;
+function logText(c){
+  if(c.__logged)return;c.__logged=true;
+  const f=c.fillText.bind(c);
+  c.fillText=function(s,x,y){
+    const size=parseFloat(c.font)||12,w=c.measureText(s).width;
+    let x0=x;
+    if(c.textAlign==='center')x0=x-w/2; else if(c.textAlign==='right')x0=x-w;
+    let y0=y;
+    if(c.textBaseline==='middle')y0=y-size*0.55;
+    else if(c.textBaseline==='bottom')y0=y-size*0.85;
+    TEXTS.push({s:String(s),x:x0,y:y0,w:w,h:size*1.05,size:size,rot:ROT,
+                col:String(c.fillStyle)});
+    return f(s,x,y);};}
 function draw(){
   const cv=document.getElementById('mC'),c=ctxOf(cv),W=cv.clientWidth,H=cv.clientHeight;
   c.clearRect(0,0,W,H);
+  logText(c);TEXTS=[];
   WORDS=0;
   const L=58,R=W-14,T=16,B=H-32;
   const S=stats();
@@ -954,7 +975,7 @@ function draw(){
     /* the two boundaries, named where they are drawn: a dashed box and an ellipse are the one
        thing the axes cannot name. Four words. */
     annotate(c,A2.PX(-LIM_Z)+3,A2.PY(LIM_Z)-9,'max |z|',C.lim);
-    annotate(c,box2.r-4,box2.t+10,'T\u00b2',C.ell,'right');
+    annotate(c,box2.r-4,box2.b-10,'T\u00b2',C.ell,'right');
     return;}
   /* tabs 2 and 3: the two sensors above, the chosen rule below.
      TAB 2 IS THE BASELINE AND HOLDS NOTHING ELSE (RIT 2026-09-03: "tab 2 มันคือ baseline จะเอา
@@ -1096,6 +1117,7 @@ window.LAB={
                   faWeeks:+CT[k].toFixed(4),
                   peakHealthy:+Math.max.apply(null,S[k].slice(0,FAULT)).toFixed(4),
                   peakFault:+Math.max.apply(null,S[k].slice(FAULT)).toFixed(4)};}
+    o.texts=TEXTS.map(function(t){return {s:t.s,x:+t.x.toFixed(1),y:+t.y.toFixed(1),w:+t.w.toFixed(1),h:+t.h.toFixed(1),size:t.size,rot:t.rot,col:t.col};});
     return o;},
   set:function(o){
     /* a name this page does not have is ignored, not obeyed */
