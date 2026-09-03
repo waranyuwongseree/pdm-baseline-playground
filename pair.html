@@ -240,6 +240,7 @@ body.distcls .wrap{height:auto;max-height:900px}   /* เนื้อหาส�
   #tnote{font-size:13px;color:#64748b;padding:6px 10px 0;line-height:1.45}
   .pg .mtab td.win,.pg .mtab th.win{color:#1E7A56;font-weight:600}
   .pg .mtab td.bad{color:#B0503A}
+  .pg .mtab td.lft{text-align:left;font-weight:400;color:#475569}
   .pg .mtab tr.sel th,.pg .mtab tr.sel td{background:#f4f7fb}
   .pg .drow.off{display:none!important}
   .pg .drow.lock{opacity:.45;pointer-events:none}
@@ -947,41 +948,45 @@ function draw(){
       dot(c,A2.PX(S.z1[i]),A2.PY(S.z2[i]),f?C.mark:C.data,f?3.2:2.6,f?0.95:0.5);}
     c.restore();
     return;}
-  /* tabs 2 and 3: the two sensors above, the chosen rule below */
-  const i0=(tab===T_MON)?HIST:0;
+  /* tabs 2 and 3: the two sensors above, the chosen rule below.
+     TAB 2 IS THE BASELINE AND HOLDS NOTHING ELSE (RIT 2026-09-03: "tab 2 มันคือ baseline จะเอา
+     test เข้ามาทำไม"). It draws hours 0..HIST, the hours the mean, the spread and the
+     correlation are measured from -- no fault, no alarms, nothing to score. Day 3's history tab
+     does not even generate the fault. Tab 3 draws the monitored hours. */
+  const i0=(tab===T_MON)?HIST:0, i1=(tab===T_RULE)?HIST:N;
   const STRIP=40,KEY2=20;
   const half=Math.floor((B-T-STRIP-KEY2-8)/2);
   const box1={l:L,r:R,t:T+STRIP,b:T+STRIP+half},
         box2={l:L,r:R,t:T+STRIP+half+KEY2+8,b:B};
   let lo=-3.6,hi=3.6;
-  for(let i=i0;i<N;i++){lo=Math.min(lo,S.z1[i]-0.4,S.z2[i]-0.4);
-                        hi=Math.max(hi,S.z1[i]+0.4,S.z2[i]+0.4);}
-  const A1=axes(c,box1,i0,N-1,lo,hi,'','sensor  (z)',true);
+  for(let i=i0;i<i1;i++){lo=Math.min(lo,S.z1[i]-0.4,S.z2[i]-0.4);
+                         hi=Math.max(hi,S.z1[i]+0.4,S.z2[i]+0.4);}
+  const A1=axes(c,box1,i0,i1-1,lo,hi,'','sensor  (z)',true);
   keys(c,box1.l,T-2,[{col:C.s1,txt:'motor current'},{col:C.s2,txt:'bearing temp'},
                      {col:C.lim,dash:true,txt:'each sensor, 3 sd'}]);
-  regionStrip(c,A1.PX,T+16,(i0===0
-    ?[{a:0,b:HIST,name:'normal learned here 0\u2013'+HIST,bar:'rgba(91,143,185,0.55)',txt:C.s1},
-      {a:HIST,b:FAULT,name:'healthy '+HIST+'\u2013'+FAULT,bar:'rgba(107,163,140,0.6)',txt:'#1E7A56'},
-      {a:FAULT,b:N-1,name:'fault '+FAULT+'\u2013'+N,bar:'rgba(176,122,174,0.7)',txt:'#8E5AA8'}]
+  regionStrip(c,A1.PX,T+16,(tab===T_RULE
+    ?[{a:0,b:HIST-1,name:'the baseline: normal is measured from these '+HIST+' hours',
+       bar:'rgba(91,143,185,0.55)',txt:C.s1}]
     :[{a:HIST,b:FAULT,name:'healthy '+HIST+'\u2013'+FAULT,bar:'rgba(107,163,140,0.6)',txt:'#1E7A56'},
       {a:FAULT,b:N-1,name:'fault '+FAULT+'\u2013'+N,bar:'rgba(176,122,174,0.7)',txt:'#8E5AA8'}]));
   c.save();c.beginPath();c.rect(box1.l,box1.t,box1.r-box1.l,box1.b-box1.t);c.clip();
   series(c,S.z1,A1,C.s1,1.5);series(c,S.z2,A1,C.s2,1.5);
   c.restore();
   hline(c,box1,A1,LIM_Z,C.lim,[3,3]);hline(c,box1,A1,-LIM_Z,C.lim,[3,3]);
-  vline(c,box1,A1,FAULT,C.fault);
+  if(tab===T_MON)vline(c,box1,A1,FAULT,C.fault);
   const v=S[rule],lim=limOf(rule),sc=score(v,lim);
-  const top=Math.max(lim*1.6,Math.max.apply(null,v.slice(i0))*1.1);
-  const A2=axes(c,box2,i0,N-1,0,top,'hour',rule==='maxz'?'max |z|':'T\u00b2');
+  const top=Math.max(lim*1.6,Math.max.apply(null,v.slice(i0,i1))*1.1);
+  const A2=axes(c,box2,i0,i1-1,0,top,'hour',rule==='maxz'?'max |z|':'T\u00b2');
   keys(c,box2.l,box2.t-KEY2-2,[{col:C.stat,txt:rule==='maxz'?'max |z|':'T\u00b2'},
     {col:C.lim,dash:true,txt:'limit '+lim.toFixed(2)}].concat(
     tab===T_MON?[{col:C.mark,dot:true,txt:sc.first===null?'no alarm':
-      ('first alarm, '+sc.delay+' h after the fault')}]:[]));
+      ('first alarm, '+sc.delay+' h after the fault')}]
+    :[]));
   c.save();c.beginPath();c.rect(box2.l,box2.t,box2.r-box2.l,box2.b-box2.t);c.clip();
   series(c,v,A2,C.stat,1.6);
   c.restore();
   hline(c,box2,A2,lim,C.lim,[7,4]);
-  vline(c,box2,A2,FAULT,C.fault);
+  if(tab===T_MON)vline(c,box2,A2,FAULT,C.fault);
   if(tab===T_MON){
     for(let i=HIST;i<N;i++)if(v[i]>=lim)
       dot(c,A2.PX(i),Math.max(box2.t,Math.min(box2.b,A2.PY(v[i]))),C.mark,2.6);}
@@ -1017,28 +1022,29 @@ function table(){
           'fault at all. Hours 0 to '+HIST+' are where normal is measured from.');
     return;}
   if(tab===T_RULE){
-    /* COUNTING STARTS AT HOUR HIST, NOT AT HOUR 0 (RIT 2026-09-03). The first HIST hours are
-       where the mean, the sd and the correlation come from; an hour cannot be an anomaly
-       against a limit it helped define, and Day 3 never judges one there either. This column
-       used to run from hour 0, which contradicted tab 3 as well as the course. */
-    head([['\\text{rule}',0],['\\text{limit}',1],['\\text{highest, monitored hours}',1],
-          ['\\text{hours over the limit}',1],['\\text{first hour over}',1]]);
+    /* THE BASELINE TAB HOLDS THE BASELINE AND NOTHING ELSE (RIT 2026-09-03). What belongs
+       here is what these 48 hours are worth: the limit they produce, the highest the statistic
+       reaches inside them, and the headroom between the two. What does NOT belong here is an
+       exceedance count or a first alarm hour -- an hour cannot be an anomaly against a limit
+       it helped define, and the test hours are not on this tab at all. */
+    head([['\\text{rule}',0],['\\text{learned from the baseline}',0],['\\text{limit}',1],
+          ['\\text{highest, baseline hours}',1],['\\text{headroom}',1]]);
+    const learned={maxz:'\\text{a mean and a spread per sensor}',
+                   t2:'\\text{...and the correlation between them}'};
     rows.forEach(function(r){
       const tr=document.createElement('tr');
       if(r.k===rule)tr.className='sel';
-      let n=0,f=null,hi=-Infinity;
-      for(let i=HIST;i<N;i++){
-        hi=Math.max(hi,r.v[i]);
-        if(r.v[i]>=limOf(r.k)){n++;if(f===null)f=i;}}
+      let hi=-Infinity;
+      for(let i=0;i<HIST;i++)hi=Math.max(hi,r.v[i]);
       tr.appendChild(th(nm[r.k]));
+      tr.appendChild(td(learned[r.k],'lft'));
       tr.appendChild(td(limOf(r.k).toFixed(2)));
       tr.appendChild(td(hi.toFixed(2)));
-      tr.appendChild(td(String(n)+'\\text{ h}'));
-      tr.appendChild(td(f===null?'\\text{never}':String(f)+'\\text{ h}',f===null?'bad':''));
+      tr.appendChild(td((limOf(r.k)-hi).toFixed(2)));
       tbb.appendChild(tr);});
-    tnote('Hours '+HIST+' to '+N+' only. The first '+HIST+' hours are where the mean, the '+
-          'spread and the correlation are measured, so nothing is judged against a limit it '+
-          'helped define. The fault starts at hour '+FAULT+'.');
+    tnote('The baseline is hours 0 to '+HIST+', and this tab shows nothing else: no fault, no '+
+          'alarms, nothing scored. Both limits are set for the same false-alarm rate, so on '+
+          'these hours both statistics stay under their own limit with room to spare.');
     return;}
   const CT=cost(mach);
   head([['\\text{rule}',0],['\\text{detection delay, h}',1],['\\text{recall, \\%}',1],
@@ -1083,7 +1089,7 @@ function setSeg(name,v){
 function applyTab(i){tab=i;
   document.querySelectorAll('.tabbtn').forEach(function(b,j){b.className='tabbtn'+(j===i?' on':'');});
   refresh();}
-const TABS=[{name:'\\text{1. The data}'},{name:'\\text{2. The rule}'},{name:'\\text{3. Monitoring}'}];
+const TABS=[{name:'\\text{1. The data}'},{name:'\\text{2. Baseline}'},{name:'\\text{3. Monitoring}'}];
 ['machine','stat'].forEach(function(nm){
   document.querySelectorAll('.seg[data-for="'+nm+'"] button').forEach(function(b){
     b.addEventListener('click',function(){setSeg(nm,b.getAttribute('data-val'));});});});
@@ -1099,12 +1105,17 @@ applyTab(T_DATA);
 window.LAB={
   read:function(){
     const S=stats(),CT=cost(mach);
-    const o={tab:tab,machine:mach,rule:rule,seed:seed,
+    /* the hour range the tab actually draws -- tab 2 is the baseline, so the gate can hold
+       it to 0..HIST-1 instead of trusting that the picture looks right */
+    const shown=(tab===T_MON)?[HIST,N-1]:(tab===T_RULE?[0,HIST-1]:[0,N-1]);
+    const o={tab:tab,machine:mach,rule:rule,seed:seed,shownHours:shown,
              n:N,hist:HIST,faultStart:FAULT,r:+S.r.toFixed(4),stats:{}};
     for(const k of RULES){
       const sc=score(S[k],limOf(k));
       let flag=0;for(let i=0;i<HIST;i++)if(S[k][i]>=limOf(k))flag++;
+      let hb=-Infinity;for(let i=0;i<HIST;i++)hb=Math.max(hb,S[k][i]);
       o.stats[k]={limit:limOf(k),delay:sc.delay,first:sc.first,
+                  peakBaseline:+hb.toFixed(4),headroom:+(limOf(k)-hb).toFixed(4),
                   rec:+sc.rec.toFixed(4),fp:sc.fp,flaggedHealthy:flag,
                   faWeeks:+CT[k].toFixed(4),
                   peakHealthy:+Math.max.apply(null,S[k].slice(0,FAULT)).toFixed(4),
