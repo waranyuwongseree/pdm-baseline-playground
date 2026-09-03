@@ -237,14 +237,15 @@ body.distcls .wrap{height:auto;max-height:900px}   /* เนื้อหาส�
   .pg .panel .seg[data-for="k"] button:nth-child(2n){border-left:1px solid #e6e6e0!important}
   .pg .panel .seg[data-for="machine"] button:nth-child(n+3),
   .pg .panel .seg[data-for="k"] button:nth-child(n+3){border-top:1px solid #e6e6e0!important}
-  /* THREE MACHINES, THREE EQUAL BUTTONS, ONE ROW (RIT 2026-09-03: "ไหนล่ะเครื่องสาม mode
-     ไม่เห็นขึ้นเลย" -- it was on the page, but the third one spanned the full width under the
-     other two, which reads as a caption over a control, not as the third of three choices).
-     A row of equals cannot be mistaken for a heading. */
-  .pg .panel .seg[data-for="machine"]{grid-template-columns:1fr 1fr 1fr}
-  .pg .panel .seg[data-for="machine"] button{padding:6px 2px}
+  /* THE MACHINES ARE A LIST OF EQUALS, ONE PER ROW. They were three across until the two
+     hard cases arrived on 2026-09-03; five names do not fit a row, and the defect RIT reported
+     earlier ("ไหนล่ะเครื่องสาม mode ไม่เห็นขึ้นเลย") was never the number of rows -- it was ONE
+     button sized differently from its neighbours, which reads as a caption over a control. A
+     single column keeps every machine the same width and the same weight, and leaves the names
+     room to be read. */
+  .pg .panel .seg[data-for="machine"]{grid-template-columns:1fr}
   .pg .panel .seg[data-for="machine"] button+button{
-    border-left:1px solid #e6e6e0!important;border-top:0!important}
+    border-left:0!important;border-top:1px solid #e6e6e0!important}
   /* Day 3's four table marks, copied verbatim (they were missing here, so tr.sel and the win
      marks painted nothing at all until 2026-09-03): the row for the k in the rail is tinted,
      the best outcome is green, an unusable one is red */
@@ -285,6 +286,8 @@ body.distcls .wrap{height:auto;max-height:900px}   /* เนื้อหาส�
           <button type="button" data-val="one">\(\text{One mode}\)</button>
           <button type="button" data-val="levels">\(\text{Two modes}\)</button>
           <button type="button" data-val="three">\(\text{Three modes}\)</button>
+          <button type="button" data-val="uneven">\(\text{Uneven spread}\)</button>
+          <button type="button" data-val="overlap">\(\text{Overlapping modes}\)</button>
         </div>
       </div>
       <div class="drow" id="c-k">
@@ -813,6 +816,17 @@ function sdOf(a){const m=mean(a);let s=0,n=0;for(const v of a){if(!ok(v))continu
    Two machines, and the button order is the argument.
 
      one      Day 3's world -- one mode, one baseline, and nothing new to do.
+     uneven   two modes 8 C apart, but one of them four times noisier than the other. k-means
+              finds them, and the baseline is STILL wrong: one control limit is shared by a
+              quiet mode and a noisy one, so it is too wide for the first and too tight for
+              the second. Over 40 weeks its recall at k=2 is 71.7% against the clean two-mode
+              machine's 78.5% -- finding the modes did not finish the job.
+     overlap  two real modes only 1.5 C apart, about two standard deviations. One mean already
+              reaches 83.5% recall at 3.7 h because the modes barely widen the residual;
+              splitting buys 2 points and half an hour and takes the weeks carrying a false
+              alarm from 12.5% to 40%. When the modes overlap, clustering is a bad trade.
+              (Both are the course's own Day 4 S1 cases -- gen_d4_s1_modes.py sets C and D --
+              rebuilt at this page's scale. The idea, not the file.)
      levels   Session 1's own file: two levels with nothing announcing them. One mean is wrong
               in both, and only a baseline that knows which mode an hour belongs to can be
               right in either. This is what the day is for.
@@ -832,10 +846,20 @@ function sdOf(a){const m=mean(a);let s=0,n=0;for(const v of a){if(!ok(v))continu
    weeks (measured over 200), and a mode fitted on a handful of hours is indistinguishable from
    noise. At 3-6 hours the thinnest mode averages 9.4 h and k = 3 is learnable. one and levels
    keep 6/12, which reproduces the old stream exactly -- their numbers do not move. */
+/* spread is per mode: how wide that mode's own scatter is, as a multiple of the machine's
+   noise. Everything except `uneven` runs at 1.0, and multiplying by 1.0 leaves those machines'
+   numbers exactly where they were.
+
+   The last two are the course's own Day 4 S1 cases (gen_d4_s1_modes.py, sets C and D), moved
+   to this page's scale. They are the two ways k-means can find the modes and still leave you
+   worse off: one limit shared between a quiet mode and a noisy one, and modes so close that
+   splitting them costs more than it pays. */
 const MODEDEF={
-  one:   {n:1,tsep:0,blo:6,bhi:12},
-  levels:{n:2,tsep:8,blo:6,bhi:12},
-  three: {n:3,tsep:4,blo:3,bhi:6}};
+  one:    {n:1,tsep:0,  blo:6,bhi:12},
+  levels: {n:2,tsep:8,  blo:6,bhi:12},
+  three:  {n:3,tsep:4,  blo:3,bhi:6},
+  uneven: {n:2,tsep:8,  blo:6,bhi:12,spread:[0.5,2.0]},
+  overlap:{n:2,tsep:1.5,blo:6,bhi:12}};
 /* one week of this machine. regen() puts the CURRENT one in the globals; machineStats()
    below walks 40 others through the same function, because a cost measured with different
    code from the one on screen is not the cost of what is on screen. */
@@ -849,7 +873,7 @@ function genWeek(m,sd){
                 left=D.blo+Math.floor(r.next()*(D.bhi-D.blo+1));}   /* one line-up, held */
     left--;
     const load=100+4.0*g();                   /* the hour's load: it moves the temperature */
-    let temp=47+0.14*load+md*D.tsep+0.5*g();
+    let temp=47+0.14*load+md*D.tsep+0.5*g()*(D.spread?D.spread[md]:1);
     if(t>=FAULT)temp+=0.70*(t-FAULT+1);       /* the fault: a slow drift, Day 3's shape */
     T.push(temp);MD.push(md);}
   return {t:T,m:MD};
