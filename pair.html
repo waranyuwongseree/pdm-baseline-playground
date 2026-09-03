@@ -833,7 +833,7 @@ function ctxOf(cv){cv.style.width='100%';cv.style.height='100%';
   const c=cv.getContext('2d');c.setTransform(d,0,0,d,0,0);return c;}
 function nice(v){if(Math.abs(v-Math.round(v))<1e-9)return String(Math.round(v));
   const a=Math.abs(v);return a>=100?v.toFixed(0):a>=10?v.toFixed(0):a>=1?v.toFixed(1):v.toFixed(2);}
-function axes(c,box,x0,x1,y0,y1,xl,yl){
+function axes(c,box,x0,x1,y0,y1,xl,yl,noXlab){
   const PX=function(x){return box.l+(x-x0)/(x1-x0)*(box.r-box.l);},
         PY=function(y){return box.b-(y-y0)/(y1-y0)*(box.b-box.t);};
   const tk=function(lo,hi,n){const o=[],s=(hi-lo)/n;for(let i=0;i<=n;i++)o.push(lo+s*i);return o;};
@@ -846,14 +846,37 @@ function axes(c,box,x0,x1,y0,y1,xl,yl){
   c.textAlign='right';c.textBaseline='middle';
   tk(y0,y1,4).forEach(function(v){c.fillText(nice(v),box.l-6,PY(v));});
   c.textAlign='center';c.textBaseline='top';
-  tk(x0,x1,4).forEach(function(v){c.fillText(nice(v),PX(v),box.b+5);});
+  if(!noXlab)tk(x0,x1,4).forEach(function(v){c.fillText(nice(v),PX(v),box.b+5);});
   if(xl)c.fillText(xl,(box.l+box.r)/2,box.b+21);
   if(yl){c.save();c.translate(box.l-40,(box.t+box.b)/2);c.rotate(-Math.PI/2);
     c.textAlign='center';c.textBaseline='bottom';c.fillText(yl,0,0);c.restore();}
   return {PX:PX,PY:PY};
 }
-function note(c,box,s){c.fillStyle=C.axtx;c.font='12.5px KaTeX_Main';
-  c.textAlign='left';c.textBaseline='top';c.fillText(s,box.l+6,box.t+4);}
+/* ONE ROW OF KEYS IN A STRIP OF ITS OWN — swatch, then words, then the next key. Ported from
+   Day 3 (playground_pdm_baseline.html), whose rule this page had been breaking: a label lives
+   inside the figure but never on top of the data, so every plot reserves the strip above it. */
+function keys(c,x0,y,items){let x=x0;
+  items.forEach(function(it){
+    if(it.dot){c.fillStyle=it.col;
+      [3,9,15].forEach(function(dx){c.beginPath();c.arc(x+dx,y+7,2.2,0,6.284);c.fill();});}
+    else if(it.box){c.strokeStyle=it.col;c.lineWidth=1.6;c.setLineDash([4,3]);
+      c.strokeRect(x+1,y+2,14,10);c.setLineDash([]);}
+    else{c.strokeStyle=it.col;c.lineWidth=2.6;if(it.dash)c.setLineDash([5,3]);
+      c.beginPath();c.moveTo(x,y+7);c.lineTo(x+15,y+7);c.stroke();c.setLineDash([]);}
+    x+=20;
+    c.fillStyle=it.col;c.font='12.5px KaTeX_Main';c.textAlign='left';c.textBaseline='middle';
+    c.fillText(it.txt,x,y+7);
+    x+=c.measureText(it.txt).width+17;});}
+/* THE REGIONS NAMED ONCE, over a bar showing exactly how far each one runs (Day 3's
+   regionStrip). This is what answers "how can there be an anomaly in the hours the limit was
+   learned from" before anyone has to ask it: those hours are named on the chart, and nothing
+   is ever judged inside them. */
+function regionStrip(c,PX,y,regs){
+  regs.forEach(function(r){
+    const xa=PX(r.a),xb=PX(r.b);
+    c.fillStyle=r.bar;c.fillRect(xa,y+12,xb-xa,3);
+    c.fillStyle=r.txt;c.font='12px KaTeX_Main';c.textAlign='center';c.textBaseline='middle';
+    c.fillText(r.name,(xa+xb)/2,y+3);});}
 function tnote(s){const e=document.getElementById('tnote');if(e)e.textContent=s||'';}
 function series(c,arr,A,col,w){c.strokeStyle=col;c.lineWidth=w||1.3;c.beginPath();
   let on=false;for(let i=0;i<arr.length;i++){const v=arr[i];if(!ok(v)){on=false;continue;}
@@ -883,21 +906,31 @@ function draw(){
        the same length on both axes or the ellipse's tilt -- which IS the correlation -- would
        be a lie about the geometry. The space under it carries the key, so nothing is left
        blank. The time series takes the rest of the width. */
-    const SW=Math.min(Math.round((R-L)*0.44),B-T-58);
-    const box1={l:L,r:R-SW-62,t:T,b:B},box2={l:R-SW,r:R,t:T,b:T+SW};
+    const STRIP=40;                       /* two reserved rows: the keys, then the regions */
+    const SW=Math.min(Math.round((R-L)*0.44),B-T-STRIP);
+    const box1={l:L,r:R-SW-62,t:T+STRIP,b:B},box2={l:R-SW,r:R,t:T+STRIP,b:T+STRIP+SW};
     /* the sensors' own range, never tighter than the limit lines they are judged against */
     let lo=-3.6,hi=3.6;
     for(let i=0;i<N;i++){lo=Math.min(lo,S.z1[i]-0.4,S.z2[i]-0.4);
                          hi=Math.max(hi,S.z1[i]+0.4,S.z2[i]+0.4);}
     const A1=axes(c,box1,0,N-1,lo,hi,'hour','sensor  (z)');
+    keys(c,box1.l,T-2,[{col:C.s1,txt:'motor current'},{col:C.s2,txt:'bearing temp'},
+                       {col:C.lim,dash:true,txt:'each sensor, 3 sd'}]);
+    regionStrip(c,A1.PX,T+16,
+      [{a:0,b:HIST,name:'normal learned here 0\u2013'+HIST,bar:'rgba(91,143,185,0.55)',txt:C.s1},
+       {a:HIST,b:FAULT,name:'healthy '+HIST+'\u2013'+FAULT,bar:'rgba(107,163,140,0.6)',txt:'#1E7A56'},
+       {a:FAULT,b:N-1,name:'fault '+FAULT+'\u2013'+N,bar:'rgba(176,122,174,0.7)',txt:'#8E5AA8'}]);
     c.save();c.beginPath();c.rect(box1.l,box1.t,box1.r-box1.l,box1.b-box1.t);c.clip();
     series(c,S.z1,A1,C.s1,1.5);series(c,S.z2,A1,C.s2,1.5);
     c.restore();
     hline(c,box1,A1,LIM_Z,C.lim,[3,3]);hline(c,box1,A1,-LIM_Z,C.lim,[3,3]);
     vline(c,box1,A1,FAULT,C.fault);
-    note(c,box1,'each sensor in its own z  ·  dashed = its limit');
+
     /* the same hours as a pair, with equal z per pixel on both axes */
     const A2=axes(c,box2,-5,5,-5,5,'current  (z)','temperature  (z)');
+    keys(c,box2.l,T-2,[{col:C.data,dot:true,txt:'healthy'},{col:C.mark,dot:true,txt:'fault'}]);
+    keys(c,box2.l,T+16,[{col:C.lim,box:true,txt:'each sensor'},
+                        {col:C.ell,txt:'the pair, r = '+S.r.toFixed(2)}]);
     c.save();c.beginPath();c.rect(box2.l,box2.t,box2.r-box2.l,box2.b-box2.t);c.clip();
     c.strokeStyle=C.lim;c.lineWidth=1.4;c.setLineDash([5,4]);
     c.strokeRect(A2.PX(-LIM_Z),A2.PY(LIM_Z),A2.PX(LIM_Z)-A2.PX(-LIM_Z),A2.PY(-LIM_Z)-A2.PY(LIM_Z));
@@ -913,43 +946,45 @@ function draw(){
       const f=i>=FAULT;
       dot(c,A2.PX(S.z1[i]),A2.PY(S.z2[i]),f?C.mark:C.data,f?3.2:2.6,f?0.95:0.5);}
     c.restore();
-    note(c,box2,'the same hours, as a pair');
-    /* the key goes under the square, where the space would otherwise be blank */
-    {let y=box2.b+40;
-     c.font='12.5px KaTeX_Main';c.textAlign='left';c.textBaseline='middle';
-     const line=function(col,rad,txt){dot(c,box2.l+6,y,col,rad,col===C.data?0.7:0.95);
-       c.fillStyle=C.axtx;c.fillText(txt,box2.l+18,y);y+=19;};
-     line(C.data,2.6,'healthy hours  —  where normal is measured');
-     line(C.mark,3.2,'faulty hours  —  from hour '+FAULT);
-     c.fillStyle=C.axtx;c.fillText('dashed square = each sensor on its own',box2.l+6,y);y+=19;
-     c.fillText('ellipse = the pair, r = '+S.r.toFixed(2),box2.l+6,y);}
     return;}
   /* tabs 2 and 3: the two sensors above, the chosen rule below */
   const i0=(tab===T_MON)?HIST:0;
-  const half=Math.floor((B-T-24)/2);
-  const box1={l:L,r:R,t:T,b:T+half},box2={l:L,r:R,t:T+half+24,b:B};
-  const A1=axes(c,box1,i0,N-1,-6,10,'','sensor  (z)');
+  const STRIP=40,KEY2=20;
+  const half=Math.floor((B-T-STRIP-KEY2-8)/2);
+  const box1={l:L,r:R,t:T+STRIP,b:T+STRIP+half},
+        box2={l:L,r:R,t:T+STRIP+half+KEY2+8,b:B};
+  let lo=-3.6,hi=3.6;
+  for(let i=i0;i<N;i++){lo=Math.min(lo,S.z1[i]-0.4,S.z2[i]-0.4);
+                        hi=Math.max(hi,S.z1[i]+0.4,S.z2[i]+0.4);}
+  const A1=axes(c,box1,i0,N-1,lo,hi,'','sensor  (z)',true);
+  keys(c,box1.l,T-2,[{col:C.s1,txt:'motor current'},{col:C.s2,txt:'bearing temp'},
+                     {col:C.lim,dash:true,txt:'each sensor, 3 sd'}]);
+  regionStrip(c,A1.PX,T+16,(i0===0
+    ?[{a:0,b:HIST,name:'normal learned here 0\u2013'+HIST,bar:'rgba(91,143,185,0.55)',txt:C.s1},
+      {a:HIST,b:FAULT,name:'healthy '+HIST+'\u2013'+FAULT,bar:'rgba(107,163,140,0.6)',txt:'#1E7A56'},
+      {a:FAULT,b:N-1,name:'fault '+FAULT+'\u2013'+N,bar:'rgba(176,122,174,0.7)',txt:'#8E5AA8'}]
+    :[{a:HIST,b:FAULT,name:'healthy '+HIST+'\u2013'+FAULT,bar:'rgba(107,163,140,0.6)',txt:'#1E7A56'},
+      {a:FAULT,b:N-1,name:'fault '+FAULT+'\u2013'+N,bar:'rgba(176,122,174,0.7)',txt:'#8E5AA8'}]));
   c.save();c.beginPath();c.rect(box1.l,box1.t,box1.r-box1.l,box1.b-box1.t);c.clip();
   series(c,S.z1,A1,C.s1,1.5);series(c,S.z2,A1,C.s2,1.5);
   c.restore();
   hline(c,box1,A1,LIM_Z,C.lim,[3,3]);hline(c,box1,A1,-LIM_Z,C.lim,[3,3]);
   vline(c,box1,A1,FAULT,C.fault);
-  note(c,box1,'motor current and bearing temperature, each in its own z');
-  const v=S[rule],lim=limOf(rule);
+  const v=S[rule],lim=limOf(rule),sc=score(v,lim);
   const top=Math.max(lim*1.6,Math.max.apply(null,v.slice(i0))*1.1);
   const A2=axes(c,box2,i0,N-1,0,top,'hour',rule==='maxz'?'max |z|':'T\u00b2');
+  keys(c,box2.l,box2.t-KEY2-2,[{col:C.stat,txt:rule==='maxz'?'max |z|':'T\u00b2'},
+    {col:C.lim,dash:true,txt:'limit '+lim.toFixed(2)}].concat(
+    tab===T_MON?[{col:C.mark,dot:true,txt:sc.first===null?'no alarm':
+      ('first alarm, '+sc.delay+' h after the fault')}]:[]));
   c.save();c.beginPath();c.rect(box2.l,box2.t,box2.r-box2.l,box2.b-box2.t);c.clip();
   series(c,v,A2,C.stat,1.6);
   c.restore();
   hline(c,box2,A2,lim,C.lim,[7,4]);
   vline(c,box2,A2,FAULT,C.fault);
-  const sc=score(v,lim);
   if(tab===T_MON){
     for(let i=HIST;i<N;i++)if(v[i]>=lim)
       dot(c,A2.PX(i),Math.max(box2.t,Math.min(box2.b,A2.PY(v[i]))),C.mark,2.6);}
-  note(c,box2,(rule==='maxz'?'each sensor on its own':'the pair, T\u00b2')+
-    '  ·  limit '+lim.toFixed(2)+
-    (tab===T_MON?(sc.first===null?'  ·  no alarm':('  ·  first alarm '+sc.delay+' h after the fault')):''));
 }
 
 /* ---------------- the table: the same two rows on every tab ---------------- */
@@ -977,25 +1012,33 @@ function table(){
       tr.appendChild(td(hi1.toFixed(2)));
       tr.appendChild(td(hi2.toFixed(2),hi2>=limOf(r.k)?'win':'bad'));
       tbb.appendChild(tr);});
-    tnote('Both limits are set for the same false-alarm rate, so on healthy hours they read '+
-          'alike. Read the last column: a rule whose highest value during the fault never '+
-          'reaches its limit cannot find that fault at all.');
+    tnote('Both limits are set for the same false-alarm rate. Read the last two columns: a '+
+          'rule whose highest value during the fault never reaches its limit cannot find that '+
+          'fault at all. Hours 0 to '+HIST+' are where normal is measured from.');
     return;}
   if(tab===T_RULE){
-    head([['\\text{rule}',0],['\\text{limit}',1],['\\text{hours over the limit}',1],
-          ['\\text{first hour over}',1]]);
+    /* COUNTING STARTS AT HOUR HIST, NOT AT HOUR 0 (RIT 2026-09-03). The first HIST hours are
+       where the mean, the sd and the correlation come from; an hour cannot be an anomaly
+       against a limit it helped define, and Day 3 never judges one there either. This column
+       used to run from hour 0, which contradicted tab 3 as well as the course. */
+    head([['\\text{rule}',0],['\\text{limit}',1],['\\text{highest, monitored hours}',1],
+          ['\\text{hours over the limit}',1],['\\text{first hour over}',1]]);
     rows.forEach(function(r){
       const tr=document.createElement('tr');
       if(r.k===rule)tr.className='sel';
-      let n=0,f=null;
-      for(let i=0;i<N;i++)if(r.v[i]>=limOf(r.k)){n++;if(f===null)f=i;}
+      let n=0,f=null,hi=-Infinity;
+      for(let i=HIST;i<N;i++){
+        hi=Math.max(hi,r.v[i]);
+        if(r.v[i]>=limOf(r.k)){n++;if(f===null)f=i;}}
       tr.appendChild(th(nm[r.k]));
       tr.appendChild(td(limOf(r.k).toFixed(2)));
+      tr.appendChild(td(hi.toFixed(2)));
       tr.appendChild(td(String(n)+'\\text{ h}'));
       tr.appendChild(td(f===null?'\\text{never}':String(f)+'\\text{ h}',f===null?'bad':''));
       tbb.appendChild(tr);});
-    tnote('Every hour of the week is counted here, healthy and faulty alike, and the fault '+
-          'starts at hour '+FAULT+'.');
+    tnote('Hours '+HIST+' to '+N+' only. The first '+HIST+' hours are where the mean, the '+
+          'spread and the correlation are measured, so nothing is judged against a limit it '+
+          'helped define. The fault starts at hour '+FAULT+'.');
     return;}
   const CT=cost(mach);
   head([['\\text{rule}',0],['\\text{detection delay, h}',1],['\\text{recall, \\%}',1],
