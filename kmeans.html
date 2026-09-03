@@ -255,6 +255,10 @@ body.distcls .wrap{height:auto;max-height:900px}   /* เนื้อหาส�
   /* which columns are this week and which are the 40 -- a table that mixes the two without
      saying so is worse than either */
   #tnote{font-size:13px;color:#64748b;padding:6px 10px 0;line-height:1.45}
+  /* the k slicer: label · slider · value, and the value is typed into (RIT 2026-09-03) */
+  #kNum{flex:0 0 auto;width:52px;font-size:15px;font-weight:600;color:#1e3a8a;text-align:center;
+        padding:4px 2px;border:1px solid #d7dbe2;border-radius:7px;background:#fff}
+  #kNum:focus{outline:2px solid #1e3a8a;outline-offset:1px}
   .pg .drow.off{display:none!important}
   .pg .drow.lock{opacity:.45;pointer-events:none}
   @media (max-width:820px){
@@ -292,12 +296,10 @@ body.distcls .wrap{height:auto;max-height:900px}   /* เนื้อหาส�
       </div>
       <div class="drow" id="c-k">
         <span class="dlab" style="flex:0 0 auto;color:#475569;font-size:15px;font-weight:600">\(\text{Modes }(k)\)</span>
-        <div class="seg" data-for="k">
-          <button type="button" data-val="1">\(1\)</button>
-          <button type="button" data-val="2">\(2\)</button>
-          <button type="button" data-val="3">\(3\)</button>
-          <button type="button" data-val="4">\(4\)</button>
-        </div>
+        <input type="range" id="kRange" min="1" max="4" step="1" value="2"
+               aria-label="number of modes, k, from 1 to 4">
+        <input type="number" id="kNum" min="1" max="4" step="1" value="2"
+               inputmode="numeric" aria-label="number of modes, k, type a value from 1 to 4">
       </div>
       <div class="row" id="rowRun">
         <button id="resetBtn" title="draw a new random week from the same machine">\(\text{New data}\)</button>
@@ -1303,6 +1305,18 @@ function table(){
 function paint(name,v){document.querySelectorAll('.seg[data-for="'+name+'"] button').forEach(function(b){
   const on=b.getAttribute('data-val')===String(v);
   b.style.background=on?'#1e3a8a':'#fff';b.style.color=on?'#fff':'#555';});}
+/* the two halves of the k slicer always show the number that is actually drawn */
+function paintK(){const r=document.getElementById('kRange'),n=document.getElementById('kNum');
+  if(r)r.value=String(K);
+  if(n&&n.value!==String(K))n.value=String(K);}
+function setK(v,commit){
+  /* applied only when it IS one of the four; on commit anything else is pulled back into
+     range, so the box can never disagree with the picture */
+  let k=Math.round(Number(v));
+  if(!isFinite(k)){if(commit)paintK();return;}
+  k=Math.max(1,Math.min(4,k));
+  if(k===K){if(commit)paintK();return;}
+  K=k;paintK();refresh();}
 function syncRows(){
   const set=function(id,st){const e=document.getElementById(id);
     e.classList.toggle('off',st==='hide');e.classList.toggle('lock',st==='lock');};
@@ -1311,24 +1325,34 @@ function syncRows(){
 }
 function refresh(){syncRows();regen();draw();table();}
 function setSeg(name,v){
-  const row={machine:'c-machine',k:'c-k'}[name];
+  const row={machine:'c-machine'}[name];
   if(document.getElementById(row).classList.contains('lock'))return;
-  if(name==='machine')mach=v; else if(name==='k')K=+v;
+  if(name==='machine')mach=v;
   paint(name,v);refresh();}
 function applyTab(i){tab=i;
   document.querySelectorAll('.tabbtn').forEach(function(b,j){b.className='tabbtn'+(j===i?' on':'');});
   refresh();}
 const TABS=[{name:'\\text{1. Modes}'},{name:'\\text{2. Baseline}'},{name:'\\text{3. Monitoring}'}];
-['machine','k'].forEach(function(nm){
+['machine'].forEach(function(nm){
   document.querySelectorAll('.seg[data-for="'+nm+'"] button').forEach(function(b){
     b.addEventListener('click',function(){setSeg(nm,b.getAttribute('data-val'));});});});
+{const r=document.getElementById('kRange'),n=document.getElementById('kNum');
+ r.addEventListener('input',function(){setK(r.value,false);});
+ /* while typing, a whole number in range takes effect at once; on commit (blur, Enter, the
+    spinner) whatever is left in the box is clamped and written back */
+ n.addEventListener('input',function(){
+   const v=n.value.trim();
+   if(/^[1-4]$/.test(v))setK(v,false);});
+ n.addEventListener('change',function(){setK(n.value,true);});
+ n.addEventListener('blur',function(){setK(n.value,true);});
+ n.addEventListener('keydown',function(e){if(e.key==='Enter')setK(n.value,true);});}
 document.getElementById('resetBtn').addEventListener('click',function(){seed++;refresh();});
 window.addEventListener('resize',function(){draw();});
 const tb=document.getElementById('tabs');
 TABS.forEach(function(T,i){const b=document.createElement('button');b.className='tabbtn';
   (window.katex?katex.render(T.name,b,{throwOnError:false}):(b.textContent=T.name));
   b.onclick=function(){applyTab(i);};tb.appendChild(b);});
-['machine','k'].forEach(function(nm){paint(nm,{machine:mach,k:K}[nm]);});
+paint('machine',mach);paintK();
 applyTab(T_MODE);
 
 window.LAB={
@@ -1351,7 +1375,7 @@ window.LAB={
     /* a name this page does not have is ignored, not obeyed: a caller's typo must not
        take the figure down */
     if(o.machine!=null&&MODEDEF[o.machine]){mach=o.machine;paint('machine',mach);}
-    if(o.k!=null){K=+o.k;paint('k',K);}
+    if(o.k!=null){K=Math.max(1,Math.min(4,Math.round(+o.k)));paintK();}
     if(o.seed!=null)seed=+o.seed;
     if(o.tab!=null)applyTab(o.tab); else refresh();}};
 (function(){const mC=document.getElementById('mC');
