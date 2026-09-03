@@ -228,10 +228,16 @@ body.distcls .wrap{height:auto;max-height:900px}   /* เนื้อหาส�
   .pg .layout>.stage{align-self:start}
   .pg .layout>.rail{grid-column:2;min-width:0;align-self:start;display:flex;flex-direction:column;align-items:stretch;min-height:var(--panel-h)}
   .pg .rail>.panel{width:100%;min-width:0;align-self:stretch;min-height:0}
-  /* THE STANDARD'S OWN VALUE (UNIVERSAL_DESIGN.md line 42: clamp(260px, 44vh, 400px)).
-     I had invented clamp(320px,54vh,500px), a hundred pixels taller, and the table under the
-     figure went off the bottom of the screen -- the numbers are the point of the table. */
-  .pg .canvasbox{height:clamp(260px,44vh,400px)}
+  /* THE SAME TWO OVERRIDES THE OTHER pdm PAGES CARRY (playground_pdm_baseline.html:17,58 and
+     playground_pdm_modes.html:17,51), so this page is not a third size in the same course.
+     The written standard says clamp(260px,44vh,400px) for a figure and pg_style gives a table
+     15px; Day 3 deviates from both ON PURPOSE, with the reason in its own comment -- the labels
+     moved inside the figure, so the height that used to go to text goes to the chart, and the
+     table is tightened to 13px to pay for it. A page in that family follows the family. */
+  .pg .canvasbox{height:clamp(360px,62vh,560px)}
+  .pg .mtab{margin:0}
+  .pg .mtab th,.pg .mtab td{padding:4px 7px;font-size:13px}
+  .pg .mtab th{white-space:normal;line-height:1.25;vertical-align:bottom}
   .pg .panel .seg[data-for="machine"],.pg .panel .seg[data-for="k"]{
     display:grid;grid-template-columns:1fr 1fr;width:100%;min-width:0;
     border:1px solid #e6e6e0;border-radius:8px;overflow:hidden}
