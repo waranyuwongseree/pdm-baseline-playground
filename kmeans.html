@@ -774,7 +774,14 @@ if(Math.max.apply(null,KS)>C.cl.length)
 function MC(j){
   if(!(j>=0&&j<C.cl.length))throw new Error('mode '+j+' has no colour of its own');
   return C.cl[j];}
-let tab=T_MODE,mach='levels',K=2,seed=1;   /* open on the machine the day exists for */
+/* OPENS ON THE MACHINE THE DAY EXISTS FOR, AND ON A WEEK THAT SHOWS BOTH SIDES (RIT
+   2026-09-03). seed 698 is not decoration: on the old opening week k = 2, 3 and 4 all read
+   delay 3 / lead 17 and every false-alarm cell was 0, so the first screen said more modes are
+   free. Over 300 weeks they are not -- 2 -> 4 buys 3.5 points of recall and pays with weeks
+   carrying a false alarm going 19% -> 44% and the split repeating in only 26% of weeks. This
+   week says it on its own: k = 2 wins outright, k = 3 and k = 4 buy nothing, lose recall and
+   each raise a false alarm. New data walks on into ordinary weeks from here. */
+let tab=T_MODE,mach='levels',K=2,seed=698;
 let TEMP=[],MODE=[];
 
 function K_(t,el,d){if(!el)return;if(window.katex){try{katex.render(String(t),el,{throwOnError:false,displayMode:!!d});return;}catch(e){}}el.textContent=t;}
