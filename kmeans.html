@@ -226,7 +226,11 @@ body.distcls .wrap{height:auto;max-height:900px}   /* เนื้อหาส�
   :root{--panel-h:340px}   /* the fullest control column, not a round number: the token is
                             per-file by the standard, and 560 left the rail half empty */
   .pg .layout>.stage{align-self:start}
-  .pg .layout>.rail{grid-column:2;min-width:0;align-self:start;display:flex;flex-direction:column;align-items:stretch;min-height:var(--panel-h)}
+  .pg .layout>.rail{grid-column:2;min-width:0;align-self:start;display:flex;flex-direction:column;align-items:stretch;
+    /* the control column stays one height across tabs (UD trap 4) but never taller than
+       the window: at 600px tall Day 3's 618px rail was itself what pushed the page into
+       scrolling, with the panel's real content only 284px (RIT 2026-09-04) */
+    min-height:min(var(--panel-h),calc(100vh - 150px))}
   .pg .rail>.panel{width:100%;min-width:0;align-self:stretch;min-height:0}
   /* THE SAME TWO OVERRIDES THE OTHER pdm PAGES CARRY (playground_pdm_baseline.html:17,58 and
      playground_pdm_modes.html:17,51), so this page is not a third size in the same course.
@@ -234,7 +238,14 @@ body.distcls .wrap{height:auto;max-height:900px}   /* เนื้อหาส�
      15px; Day 3 deviates from both ON PURPOSE, with the reason in its own comment -- the labels
      moved inside the figure, so the height that used to go to text goes to the chart, and the
      table is tightened to 13px to pay for it. A page in that family follows the family. */
-  .pg .canvasbox{height:clamp(360px,62vh,560px)}
+  /* THE FIGURE YIELDS TO THE TABLE (RIT 2026-09-04: "kmeans รูปสูงเกินจนตารางล้น" and
+     the same on the published Day 3 page, which scrolls 24, 44 and 84px at 660, 640 and
+     600px tall). The clamp alone answers only to the viewport; on a short window it keeps
+     asking for 360-560px and the numbers go off the bottom. min() adds the other
+     constraint -- the height that is actually left once the header and the table have
+     theirs -- so on a normal screen nothing changes and on a short one the chart gives
+     way instead of the table. */
+  .pg .canvasbox{height:min(clamp(360px,62vh,560px),calc(100vh - 250px))}
   .pg .mtab{margin:0}
   .pg .mtab th,.pg .mtab td{padding:4px 7px;font-size:13px}
   .pg .mtab th{white-space:normal;line-height:1.25;vertical-align:bottom}
