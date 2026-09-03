@@ -786,6 +786,8 @@ if (typeof document !== 'undefined') (function () {
    model has to beat.
    ========================================================================================== */
 const N=96,HIST=48,FAULT=72,LIMZ=3,LIMIT_C=75;
+const FAULT_STEP=2.0,FAULT_SLOPE=0.35;   /* the course's step, with just enough slope
+                                            left that 75 C stays reachable on the hot machine */
 const KS=[1,2,3,4];
 /* what to call the split on the figure: k = 1 is not 'a mean per mode', it is the whole
    history under one mean, and the note has to say so */
@@ -889,7 +891,14 @@ function genWeek(m,sd){
     left--;
     const load=100+4.0*g();                   /* the hour's load: it moves the temperature */
     let temp=47+0.14*load+md*D.tsep+0.5*g()*(D.spread?D.spread[md]:1);
-    if(t>=FAULT)temp+=0.70*(t-FAULT+1);       /* the fault: a slow drift, Day 3's shape */
+    /* THE FAULT IS THE SIZE THE COURSE MAKES IT (RIT 2026-09-04). A 0.70 C/hour ramp
+       reached +17 C and broke through even the 12.4 C limit that one mean over two levels
+       produces, so the wrong baseline still eventually worked -- while the course's own
+       answer key has it scoring recall 0.000 on the two-mode file. A step with a slow
+       slope instead: 10.1 C by the end of the window, under that 12.4 C limit and far
+       over the 2.25 C a mean per mode leaves. */
+    const h=t-FAULT+1;
+    if(h>0)temp+=FAULT_STEP+FAULT_SLOPE*(h-1);
     T.push(temp);MD.push(md);}
   return {t:T,m:MD};
 }
@@ -1297,11 +1306,17 @@ function table(){
      machine-weeks measured, so nothing about the verdict changed, only what has to be shown
      to justify it. On the single-mode machine every k ties on delay and the mark lands on
      k = 1, which is the true answer there. */
+  /* EARLIEST ALARM, THEN THE MOST OF THE FAULT CAUGHT, THEN THE FEWEST MODES (RIT
+     2026-09-04, after the fault was cut to the size the course uses). Delay alone stopped
+     discriminating: a small fault is caught in the first hour by every k that is enough, so
+     three machines all recommended 2. Recall breaks that tie the way an operator would. */
   let bv=Infinity;
   rows.forEach(function(r){if(r.r.delay!==null&&r.r.delay<bv)bv=r.r.delay;});
+  let bestRec=-1;
+  rows.forEach(function(r){if(r.r.delay===bv&&r.r.rec>bestRec)bestRec=r.r.rec;});
   let best=null;
   rows.forEach(function(r){
-    if(r.r.delay!==bv)return;
+    if(r.r.delay!==bv||r.r.rec<bestRec-1e-9)return;
     if(best===null||r.k<best.k)best=r;});
   rows.forEach(function(r){
     const tr=document.createElement('tr');
