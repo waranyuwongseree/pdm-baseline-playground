@@ -271,7 +271,7 @@ body.distcls .wrap{height:auto;max-height:900px}   /* เนื้อหาส�
         <span class="dlab" style="flex:0 0 auto;color:#475569;font-size:15px;font-weight:600">\(\text{Machine}\)</span>
         <div class="seg" data-for="machine">
           <button type="button" data-val="one">\(\text{One mode}\)</button>
-          <button type="button" data-val="levels">\(\text{Hidden modes}\)</button>
+          <button type="button" data-val="levels">\(\text{Two modes}\)</button>
         </div>
       </div>
       <div class="drow" id="c-k">
@@ -763,6 +763,17 @@ const T_MODE=0,T_BASE=1,T_MON=2;
 const C={cl:['#33618D','#1E7A56','#C07E00','#8E5AA8'],
          data:'#6E93B8',exp:'#1E7A56',lim:'#B0503A',alarm:'#C07E00',mark:'#B0503A',
          cen:'#1F2A37',ax:'#94a3b8',axtx:'#64748b',grid:'#eef1f5',fault:'#B07AAE'};
+/* ONE COLOUR PER MODE, AND NEVER A WRAP (RIT 2026-09-03). The palette used to be indexed
+   `C.cl[m % C.cl.length]`, which is silent: a fifth mode would come back painted exactly like
+   the first, and two different modes drawn identically is the one failure a colour encoding
+   must not have. There are four colours and k stops at four, so this never fires today -- it
+   fires the moment someone adds a fifth k or a machine with more modes, which is when it is
+   worth knowing. It throws rather than warning: the gate's RUNTIME/no-errors catches a throw. */
+if(Math.max.apply(null,KS)>C.cl.length)
+  throw new Error('palette has '+C.cl.length+' colours but k runs to '+Math.max.apply(null,KS));
+function MC(j){
+  if(!(j>=0&&j<C.cl.length))throw new Error('mode '+j+' has no colour of its own');
+  return C.cl[j];}
 let tab=T_MODE,mach='levels',K=2,seed=1;   /* open on the machine the day exists for */
 let TEMP=[],MODE=[];
 
@@ -784,7 +795,16 @@ function sdOf(a){const m=mean(a);let s=0,n=0;for(const v of a){if(!ok(v))continu
      one      Day 3's world -- one mode, one baseline, and nothing new to do.
      levels   Session 1's own file: two levels with nothing announcing them. One mean is wrong
               in both, and only a baseline that knows which mode an hour belongs to can be
-              right in either. This is what the day is for. */
+              right in either. This is what the day is for.
+
+   THE BUTTONS NAME THE MACHINE, NOT THE DIFFICULTY (RIT 2026-09-03). The second one used to
+   read 'Hidden modes', which put the word 'modes' on two controls that mean different things --
+   the machine, and the k the learner picks -- and made a claim about what the learner cannot
+   see that the page contradicts one click later, when tab 1 draws the modes in colour. 'One
+   mode' / 'Two modes' says what the generator does, so the truth sits on the left control and
+   the guess on the right, and the tables say whether the guess paid. That nothing on the
+   machine ANNOUNCES the mode is still the point of the day -- it belongs in the note under the
+   chart and in this comment, not on a button. */
 const MODEDEF={
   one:   {n:1,tsep:0},
   levels:{n:2,tsep:8}};
@@ -862,7 +882,7 @@ function baseline(k){
     const on=Math.abs(z[i])>=LIMZ;
     if(on&&i>=FAULT){tp++;if(first===null)first=i;}}
   let t75=null;for(let i=FAULT;i<N;i++)if(TEMP[i]>=LIMIT_C){t75=i;break;}
-  return {k:k,exp:exp,res:res,sd:sd,z:z,limitC:LIMZ*sd,
+  return {k:k,exp:exp,res:res,sd:sd,z:z,limitC:LIMZ*sd,mu:mu,
           first:first,delay:first===null?null:first-FAULT,
           rec:tp/(N-FAULT),t75:t75,
           lead:(first===null||t75===null)?null:t75-first};
@@ -875,7 +895,9 @@ function ctxOf(cv){cv.style.width='100%';cv.style.height='100%';
   const c=cv.getContext('2d');c.setTransform(d,0,0,d,0,0);return c;}
 function nice(v){if(Math.abs(v-Math.round(v))<1e-9)return String(Math.round(v));
   const a=Math.abs(v);return a>=100?v.toFixed(0):a>=10?v.toFixed(0):a>=1?v.toFixed(1):v.toFixed(2);}
-function axes(c,box,x0,x1,y0,y1,xl,yl){
+/* noY: draw the panel but not the numbers up its left edge -- for a panel that SHARES its
+   vertical axis with the one beside it, where a second set of the same numbers is noise. */
+function axes(c,box,x0,x1,y0,y1,xl,yl,noY){
   const PX=function(x){return box.l+(x-x0)/(x1-x0)*(box.r-box.l);},
         PY=function(y){return box.b-(y-y0)/(y1-y0)*(box.b-box.t);};
   const tk=function(lo,hi,n){const o=[],s=(hi-lo)/n;for(let i=0;i<=n;i++)o.push(lo+s*i);return o;};
@@ -886,7 +908,7 @@ function axes(c,box,x0,x1,y0,y1,xl,yl){
   c.moveTo(box.l,box.t);c.lineTo(box.l,box.b);c.lineTo(box.r,box.b);c.stroke();
   c.fillStyle=C.axtx;c.font='12px KaTeX_Main';
   c.textAlign='right';c.textBaseline='middle';
-  tk(y0,y1,4).forEach(function(v){c.fillText(nice(v),box.l-6,PY(v));});
+  if(!noY)tk(y0,y1,4).forEach(function(v){c.fillText(nice(v),box.l-6,PY(v));});
   c.textAlign='center';c.textBaseline='top';
   tk(x0,x1,4).forEach(function(v){c.fillText(nice(v),PX(v),box.b+5);});
   if(xl)c.fillText(xl,(box.l+box.r)/2,box.b+21);
@@ -911,45 +933,79 @@ function draw(){
   c.clearRect(0,0,W,H);
   const L=58,R=W-14,T=16,B=H-32;
   if(tab===T_MODE){
-    /* TWO VIEWS OF THE SAME HOURS (RIT 2026-08-31): the history in time, and the space the
-       clustering happened in. One shows that a mode is a stretch of hours; the other shows
-       why the algorithm could -- or could not -- tell them apart. */
-    const km=kmeans(K),Z=km.Z;
-    const half=Math.floor((B-T-46)/2);
-    const box1={l:L,r:R,t:T,b:T+half},box2={l:L,r:R,t:T+half+46,b:B};
+    /* TWO VIEWS OF THE SAME HOURS (RIT 2026-08-31): the history in time, and the shape those
+       same hours make along the temperature axis. One shows that a mode is a stretch of hours;
+       the other shows why the algorithm could -- or could not -- tell them apart.
+
+       A MODE BELONGS TO AN HOUR, SO IT IS DRAWN BEHIND THE HOUR (RIT 2026-09-03). This used to
+       colour the LINE: the segment from hour i-1 to hour i took the colour of hour i, so every
+       segment that spans a mode change was painted entirely in the new mode's colour and every
+       boundary moved half an hour early, in the same direction, every time. It also implied
+       that the transition itself has a mode, and at k = 3 or 4 -- where the clustering is
+       slicing a continuum and assignments flip hour to hour -- it turned the history into a
+       barber pole that reads as noise. Tab 3 marks an hour as a DOT; this tab now agrees with
+       it. The machine holds a line-up for 6 to 12 hours at a stretch (see the generator above),
+       so the honest mark is a BAND behind the run, with the temperature drawn as one line on
+       top, and each mode's mean dashed across ITS OWN hours and no further.
+
+       THE TWO PANELS SHARE THE TEMPERATURE AXIS. The histogram is these hours seen along that
+       same axis, so it is turned on its side and set beside the time plot instead of under it:
+       the humps line up with the bands, the axis is labelled once instead of twice, and the
+       caption that used to explain what the lower panel was is not needed at all. */
+    const km=kmeans(K);
+    const HW=Math.max(96,Math.round((R-L)*0.24));
+    const box1={l:L,r:R-HW-18,t:T,b:B},box2={l:R-HW,r:R,t:T,b:B};
     const ry1=pad(TEMP.slice(0,HIST),0.12);
     const A1=axes(c,box1,0,HIST-1,ry1[0],ry1[1],'hour','temperature, °C');
-    c.save();c.beginPath();c.rect(box1.l,box1.t,box1.r-box1.l,box1.b-box1.t);c.clip();
-    for(let i=1;i<HIST;i++){
-      c.strokeStyle=C.cl[km.train[i]%C.cl.length];c.lineWidth=1.6;
-      c.beginPath();c.moveTo(A1.PX(i-1),A1.PY(TEMP[i-1]));c.lineTo(A1.PX(i),A1.PY(TEMP[i]));c.stroke();}
-    /* each mode's mean, drawn only across the hours that belong to it */
+    /* the runs: stretches of consecutive hours the clustering put in the same mode */
+    const runs=[];
+    for(let i=0;i<HIST;i++){
+      const m=km.train[i];
+      if(runs.length&&runs[runs.length-1].m===m)runs[runs.length-1].b=i;
+      else runs.push({m:m,a:i,b:i});}
     const mu=[],cnt=[];for(let j=0;j<K;j++){mu.push(0);cnt.push(0);}
     for(let i=0;i<HIST;i++){mu[km.train[i]]+=TEMP[i];cnt[km.train[i]]++;}
     for(let j=0;j<K;j++)if(cnt[j])mu[j]/=cnt[j];
-    for(let j=0;j<K;j++){if(!cnt[j])continue;
-      c.strokeStyle=C.cen;c.lineWidth=1.6;c.setLineDash([6,4]);
-      c.beginPath();c.moveTo(box1.l,A1.PY(mu[j]));c.lineTo(box1.r,A1.PY(mu[j]));c.stroke();
-      c.setLineDash([]);}
+    c.save();c.beginPath();c.rect(box1.l,box1.t,box1.r-box1.l,box1.b-box1.t);c.clip();
+    const xe=function(v){return Math.max(box1.l,Math.min(box1.r,A1.PX(v)));};
+    runs.forEach(function(r){
+      c.fillStyle=MC(r.m);c.globalAlpha=0.13;
+      const x0=xe(r.a-0.5),x1=xe(r.b+0.5);
+      c.fillRect(x0,box1.t,x1-x0,box1.b-box1.t);});
+    c.globalAlpha=1;
+    series(c,TEMP.slice(0,HIST),A1,C.data,1.5);
+    c.setLineDash([6,4]);c.lineWidth=1.8;
+    runs.forEach(function(r){
+      if(!cnt[r.m])return;
+      c.strokeStyle=MC(r.m);
+      c.beginPath();c.moveTo(xe(r.a-0.5),A1.PY(mu[r.m]));
+      c.lineTo(xe(r.b+0.5),A1.PY(mu[r.m]));c.stroke();});
+    c.setLineDash([]);
     c.restore();
-    note(c,box1,'healthy history  ·  colour = assigned mode  ·  dashed = mode mean');
-    /* the second view: the same hours as a shape, which is what the clustering actually
-       read (Session 1's Histogram node) */
-    {const lo=ry1[0],hi=ry1[1],B_=26,cnt2=new Array(B_).fill(0),by=[];
-     for(let j=0;j<B_;j++)by.push([]);
+    note(c,box1,'healthy history  ·  band = mode, dashed = its mean');
+    /* the same hours along the same axis. STACKED BY MODE, never painted with the bin's
+       majority: a bin holding hours from two modes IS mixed, and collapsing it to one colour
+       made neighbouring bins flip at k = 3 until the shape stopped reading as a shape. (The
+       old majority also sorted the labels with a plain .sort(), which orders them as text.) */
+    {const lo=ry1[0],hi=ry1[1],NB=26,by=[];
+     for(let j=0;j<NB;j++)by.push(new Array(K).fill(0));
      for(let i=0;i<HIST;i++){
-       const b=Math.max(0,Math.min(B_-1,Math.floor((TEMP[i]-lo)/(hi-lo)*B_)));
-       cnt2[b]++;by[b].push(km.train[i]);}
-     const A2=axes(c,box2,lo,hi,0,Math.max.apply(null,cnt2)*1.15+1,'temperature, °C','hours');
-     const w=(box2.r-box2.l)/B_;
-     for(let j=0;j<B_;j++){
-       if(!cnt2[j])continue;
-       const maj=by[j].sort()[Math.floor(by[j].length/2)];
-       c.fillStyle=C.cl[maj%C.cl.length];c.globalAlpha=0.75;
-       const x=A2.PX(lo+(j+0.5)*(hi-lo)/B_)-w*0.42,y=A2.PY(cnt2[j]);
-       c.fillRect(x,y,w*0.84,A2.PY(0)-y);}
-     c.globalAlpha=1;
-     note(c,box2,'the same hours as a shape');}
+       const b=Math.max(0,Math.min(NB-1,Math.floor((TEMP[i]-lo)/(hi-lo)*NB)));
+       by[b][km.train[i]]++;}
+     const tall=Math.max.apply(null,by.map(function(v){
+       return v.reduce(function(a,b){return a+b;},0);}));
+     const top=Math.max(4,Math.ceil((tall+1)/4)*4);        /* whole-number ticks, always */
+     const A2=axes(c,box2,0,top,lo,hi,'hours',null,true);
+     const h=(box2.b-box2.t)/NB;
+     for(let j=0;j<NB;j++){
+       let acc=0;
+       for(let m=0;m<K;m++){
+         if(!by[j][m])continue;
+         c.fillStyle=MC(m);c.globalAlpha=0.75;
+         const y=A2.PY(lo+(j+0.5)*(hi-lo)/NB)-h*0.42;
+         c.fillRect(A2.PX(acc),y,A2.PX(acc+by[j][m])-A2.PX(acc),h*0.84);
+         acc+=by[j][m];}}
+     c.globalAlpha=1;}
     return;}
   const b=baseline(K);
   const i0=(tab===T_MON)?HIST:0,i1=(tab===T_MON)?N:HIST;
@@ -1003,13 +1059,33 @@ function table(){
     return {k:k,n:n,r:baseline(k)};});
   const kcell=function(r){return th('\\text{'+r.k+'}');};
   if(tab===T_MODE){
-    head([['\\text{modes }(k)',0],['\\text{hours per mode}',1],
-          ['\\text{residual sd},\\ ^\\circ\\text{C}',1]]);
+    /* THE MEAN OF EACH MODE IS THE BASELINE, AND IT GETS ITS OWN COLUMN (RIT, ordered twice --
+       2026-09-03). Until now the page never showed these numbers anywhere: a learner could read
+       that two modes fit tighter without ever seeing that the two centres are eight degrees
+       apart, which is the whole reason they do.
+
+       ONE COLUMN PER MODE, and a row that has fewer modes leaves the rest BLANK -- k = 1 fills
+       `mean 1` and nothing else, which is RIT's own description of what he wanted and is the
+       truth about that row: there is no second mode, so there is no second mean, and a blank
+       says that where a dash or a zero would not. Blank cells are already how this project
+       writes an absent value (deck rule, 2026-08-31). Reading DOWN a mean column is then the
+       thing the old single cell could not offer: `mean 1` walks 65.0 -> 69.1 -> 60.9 as k
+       grows, and at k = 3 on the two-mode machine `mean 2` and `mean 3` land 68.4 and 69.8 --
+       1.4 degrees apart against the 8.2 that separates the real levels, which is the table
+       saying the third mode was invented. The mean columns are in the same index order as the
+       hours beside them, so the counts and the centres line up value for value. */
+    const KMAX=Math.max.apply(null,KS);
+    const hd=[['\\text{modes }(k)',0],['\\text{hours per mode}',1]];
+    for(let j=1;j<=KMAX;j++)hd.push(['\\text{mean }'+j+',\\ ^\\circ\\text{C}',1]);
+    hd.push(['\\text{residual sd},\\ ^\\circ\\text{C}',1]);
+    head(hd);
     rows.forEach(function(r){
       const tr=document.createElement('tr');
       if(r.k===K)tr.className='sel';
       tr.appendChild(kcell(r));
       tr.appendChild(td(r.n.join('\\ /\\ ')));
+      for(let j=0;j<KMAX;j++)
+        tr.appendChild(td(j<r.r.mu.length?r.r.mu[j].toFixed(1):''));
       tr.appendChild(td(r.r.sd.toFixed(2)));
       tbb.appendChild(tr);});
     return;}
@@ -1084,7 +1160,8 @@ window.LAB={
       const km=kmeans(k),n=new Array(k).fill(0);
       for(let i=0;i<HIST;i++)n[km.train[i]]++;
       const r=baseline(k);
-      o.modes[k]={sizes:n,sd:+r.sd.toFixed(4),limitC:+r.limitC.toFixed(4),
+      o.modes[k]={sizes:n,means:r.mu.map(function(v){return +v.toFixed(4);}),
+                  sd:+r.sd.toFixed(4),limitC:+r.limitC.toFixed(4),
                   delay:r.delay,lead:r.lead,rec:+r.rec.toFixed(4),
                   first:r.first,t75:r.t75};}
     return o;},
