@@ -1114,41 +1114,43 @@ function table(){
   /* WHAT RAISING k BUYS, AND WHAT IT COSTS (RIT 2026-09-03). This tab used to print delay,
      lead and recall only, and on the opening week those read 3 / 17 / 63 at k = 2, 3 and 4
      alike: three rows saying that assuming four modes is exactly as good as assuming two, and
-     no column anywhere saying otherwise. Two columns were missing, and they are the cost.
+     no column anywhere saying otherwise.
 
-       smallest mode, h   the hours behind the THINNEST of the k modes -- 48, 24, 12, 9 as k
-                          climbs. Deterministic, on every week, and it is the reason for the
-                          other column: a mean and a 3 sd limit learned from nine hours is not
-                          a baseline anyone should act on.
-       false alarms, h    what it did to the 24 QUIET test hours. Measured over 40 weeks,
-                          raising k from 2 to 3 takes the weeks carrying at least one false
-                          alarm from 30% to 50%; on a single week it is often 0 at every k,
-                          which is exactly why the thin-mode column has to be there too.
+     `false alarms, h` is what the baseline did to the 24 QUIET test hours -- the cost, in the
+     same unit as everything else here. With recall it accounts for every hour of the test
+     half. Measured over 40 weeks, raising k from 2 to 3 takes the weeks carrying at least one
+     false alarm from 30% to 50%; on many single weeks, the opening one among them, it is 0 at
+     every k, and that is the honest reading of that week rather than a gap to paper over.
 
-     Together with recall these three account for every hour of the test half, in the units an
-     operator uses -- hours, not rates. */
-  head([['\\text{modes }(k)',0],['\\text{smallest mode, h}',1],
+     A `smallest mode, h` column sat here for one revision and was CUT (RIT, same day).
+     Measured over 120 machine-weeks it failed on its own terms: it rises with k in 9 of them
+     (levels seed 4 reads 48 / 13 / 6 / 8), so a column put there to say "every extra mode is
+     fitted on less" argues against itself about one week in thirteen. It was also a property
+     of the fit on a tab about monitoring, and tab 1's `hours per mode` already carries the
+     same numbers. */
+  head([['\\text{modes }(k)',0],
         ['\\text{detection delay, h}',1],['\\text{lead vs 75 °C, h}',1],
         ['\\text{recall, \\%}',1],['\\text{false alarms, h}',1]]);
-  /* ONE WINNER, AND IT IS THE CHEAPEST WAY TO THE EARLIEST ALARM. The mark used to go to
-     EVERY row that tied on the earliest delay, so k = 2, 3 and 4 all came up green and the
-     table recommended nothing. Rows still have to win on the OUTCOME first -- the earliest
-     alarm, never the tightest fit -- but among rows that reach it, the one that got there on
-     the most hours per mode is the one to copy: same result, fewer assumptions, more evidence
-     behind each limit. On the single-mode machine every k ties on delay, so k = 1 takes the
-     mark, which is the true answer there. */
+  /* ONE WINNER: THE FEWEST MODES THAT REACH THE EARLIEST ALARM. The mark used to go to EVERY
+     row that tied on the earliest delay, so k = 2, 3 and 4 all came up green and the table
+     recommended nothing. The outcome still decides first -- the earliest alarm, never the
+     tightest fit -- and among the rows that reach it, the winner is the one that assumed the
+     least. It reads straight off the k column, with no number hidden behind it; the rule this
+     replaces picked by hours-behind-the-thinnest-mode and agreed with this one on all 120
+     machine-weeks measured, so nothing about the verdict changed, only what has to be shown
+     to justify it. On the single-mode machine every k ties on delay and the mark lands on
+     k = 1, which is the true answer there. */
   let bv=Infinity;
   rows.forEach(function(r){if(r.r.delay!==null&&r.r.delay<bv)bv=r.r.delay;});
   let best=null;
   rows.forEach(function(r){
     if(r.r.delay!==bv)return;
-    if(best===null||r.r.smallest>best.r.smallest)best=r;});
+    if(best===null||r.k<best.k)best=r;});
   rows.forEach(function(r){
     const tr=document.createElement('tr');
     if(r.k===K)tr.className='sel';
     const w=(r===best);
     tr.appendChild(th('\\text{'+r.k+'}',w?'win':''));
-    tr.appendChild(td(String(r.r.smallest)));
     tr.appendChild(td(r.r.delay===null?'\\text{never}':String(r.r.delay),
                       r.r.delay===null?'bad':(w?'win':'')));
     tr.appendChild(td(r.r.lead===null?'\\text{--}':String(r.r.lead),
