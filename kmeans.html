@@ -952,24 +952,24 @@ function axes(c,box,x0,x1,y0,y1,xl,yl,noY){
     c.textBaseline='bottom';c.fillText(yl,0,0);c.restore();}
   return {PX:PX,PY:PY};
 }
-/* THE SAME VALUES AS A SHAPE, BESIDE THE PANEL THAT PLOTS THEM (RIT 2026-09-03: tab 2 was
-   the only tab without one). It shares the panel's y axis, so a hump lines up with the hours
-   that made it, and the axis is labelled once. `col` is given the middle of the bin, so a
-   caller can paint the part of the distribution that is past a limit in another colour. */
-function marginal(c,box,lo,hi,vals,col,xl){
-  const NB=22,by=new Array(NB).fill(0);
-  for(const v of vals){if(!ok(v))continue;
-    by[Math.max(0,Math.min(NB-1,Math.floor((v-lo)/(hi-lo)*NB)))]++;}
-  const tall=Math.max.apply(null,by),top=Math.max(4,Math.ceil((tall+1)/4)*4);
-  const A=axes(c,box,0,top,lo,hi,xl===undefined?'hours':xl,null,true);
-  const h=(box.b-box.t)/NB;
-  for(let j=0;j<NB;j++){
-    if(!by[j])continue;
-    const mid=lo+(j+0.5)*(hi-lo)/NB,y=A.PY(mid)-h*0.42;
-    c.fillStyle=col?col(mid):C.data;c.globalAlpha=0.75;
-    c.fillRect(A.PX(0),y,A.PX(by[j])-A.PX(0),h*0.84);}
-  c.globalAlpha=1;
-  return A;}
+/* THE SAME LINE READ IN DEGREES. residual = z x sd, so the right-hand ruler is the z ruler
+   rescaled by this baseline's own sd: the left edge answers "how many sd", the right edge
+   answers "how many degrees", and the plant reads the second one. Day 3's convention, copied
+   from playground_pdm_baseline.html (RIT 2026-08-28, asked for again here 2026-09-03). */
+function niceTicks(lo,hi){
+  const span=hi-lo;if(!(span>0))return [];
+  const raw=span/5,p=Math.pow(10,Math.floor(Math.log(raw)/Math.LN10)),n=raw/p;
+  const step=(n<1.5?1:n<3?2:n<7?5:10)*p,out=[];
+  for(let v=Math.ceil(lo/step-1e-9)*step;v<=hi+1e-9;v+=step)out.push(+v.toFixed(6));
+  return out;}
+function rulerC(c,box,A,z0,z1,sd){
+  if(!(sd>0))return;
+  c.fillStyle=C.axtx;c.font='12px KaTeX_Main';c.textAlign='left';c.textBaseline='middle';
+  niceTicks(z0*sd,z1*sd).forEach(function(v){
+    const y=A.PY(v/sd);
+    if(y>=box.t-1&&y<=box.b+1)c.fillText(nice(v),box.r+5,y);});
+  c.save();c.translate(box.r+34,(box.t+box.b)/2);c.rotate(-Math.PI/2);
+  c.textAlign='center';c.textBaseline='bottom';c.fillText('°C',0,0);c.restore();}
 function note(c,box,s){c.fillStyle=C.axtx;c.font='12.5px KaTeX_Main';
   c.textAlign='left';c.textBaseline='top';c.fillText(s,box.l+6,box.t+4);}
 function series(c,arr,A,col,w){c.strokeStyle=col;c.lineWidth=w||1.3;c.beginPath();
@@ -1064,11 +1064,10 @@ function draw(){
   const b=baseline(K);
   const i0=(tab===T_MON)?HIST:0,i1=(tab===T_MON)?N:HIST;
   const half=Math.floor((B-T-24)/2);
-  /* two rows, and each row is a time plot with its own shape beside it -- the same pairing
-     tab 1 uses, on the same grid, so the four panels line up */
-  const HW=Math.max(96,Math.round((R-L)*0.24)),XR=R-HW-18;
+  /* room on the right for the degree ruler on the residual panel; both rows end on the same
+     x so the two plots stay aligned */
+  const XR=R-40;
   const box1={l:L,r:XR,t:T,b:T+half},box2={l:L,r:XR,t:T+half+24,b:B};
-  const mar1={l:R-HW,r:R,t:T,b:T+half},mar2={l:R-HW,r:R,t:T+half+24,b:B};
   const seg=TEMP.slice(i0,i1).concat(b.exp.slice(i0,i1)).concat(tab===T_MON?[LIMIT_C]:[]);
   const ry=pad(seg,0.12);
   const A1=axes(c,box1,i0,i1-1,ry[0],ry[1],'','temperature, °C');
@@ -1077,8 +1076,6 @@ function draw(){
   series(c,b.exp,A1,C.exp,2.2);
   c.restore();
   if(tab===T_MON){hline(c,box1,A1,LIMIT_C,C.lim,[3,3]);vline(c,box1,A1,FAULT,C.fault);}
-  {const Am=marginal(c,mar1,ry[0],ry[1],TEMP.slice(i0,i1),null,'');
-   if(tab===T_MON)hline(c,mar1,Am,LIMIT_C,C.lim,[3,3]);}
   note(c,box1,(tab===T_MON?'test hours  ·  ':'healthy history  ·  ')+KNAME(K)+
     '  ·  sd '+b.sd.toFixed(2)+' °C');
   const zr=(tab===T_MON)?[-6,14]:[-6,6];
@@ -1087,11 +1084,7 @@ function draw(){
   series(c,b.z,A2,C.data,1.3);
   c.restore();
   hline(c,box2,A2,LIMZ,C.lim,[7,4]);hline(c,box2,A2,-LIMZ,C.lim,[7,4]);
-  /* the residual as a distribution, with the control limits drawn across it and everything
-     outside them in the alarm colour: the whole of the alarm rule in one picture */
-  {const Am=marginal(c,mar2,zr[0],zr[1],b.z.slice(i0,i1),
-     function(v){return Math.abs(v)>=LIMZ?C.mark:C.data;},'hours');
-   hline(c,mar2,Am,LIMZ,C.lim,[7,4]);hline(c,mar2,Am,-LIMZ,C.lim,[7,4]);}
+  rulerC(c,box2,A2,zr[0],zr[1],b.sd);
   if(tab===T_MON){
     vline(c,box2,A2,FAULT,C.fault);
     c.fillStyle=C.mark;
