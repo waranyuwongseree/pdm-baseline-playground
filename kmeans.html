@@ -876,13 +876,24 @@ function baseline(k){
   const sd=sdOf(res.slice(0,HIST))||1e-9;
   const z=res.map(function(r){return r/sd;});
   /* recall, exactly as Day 3 counts it: of the hours that really are faulty, how many did
-     this baseline flag. TP/FAULT_HOURS, on the test half only. */
-  let first=null,tp=0;
+     this baseline flag. TP/FAULT_HOURS, on the test half only.
+     AND WHAT IT COST: the alarms it raised in the QUIET test hours, before the fault starts.
+     Every hour of the test half is either quiet or faulty, so these two counts between them
+     say what the baseline did with all 48 of them. */
+  let first=null,tp=0,fp=0;
   for(let i=HIST;i<N;i++){
-    const on=Math.abs(z[i])>=LIMZ;
-    if(on&&i>=FAULT){tp++;if(first===null)first=i;}}
+    if(Math.abs(z[i])<LIMZ)continue;
+    if(i>=FAULT){tp++;if(first===null)first=i;}
+    else fp++;}
   let t75=null;for(let i=FAULT;i<N;i++)if(TEMP[i]>=LIMIT_C){t75=i;break;}
-  return {k:k,exp:exp,res:res,sd:sd,z:z,limitC:LIMZ*sd,mu:mu,
+  return {k:k,exp:exp,res:res,sd:sd,z:z,limitC:LIMZ*sd,mu:mu,fp:fp,
+          /* the hours behind the THINNEST mode. Every extra mode is fitted on fewer hours than
+             the last, and a limit learned from nine hours is a limit nobody should trust --
+             this is the number that says so, and it moves on every week, which the false alarm
+             count does not (measured over 40 seeds: raising k from 2 to 3 takes the weeks that
+             carry at least one false alarm from 30% to 50%, but on most single weeks, seed 1
+             among them, the count is 0 at every k and the cost is invisible). */
+          smallest:Math.min.apply(null,c),
           first:first,delay:first===null?null:first-FAULT,
           rec:tp/(N-FAULT),t75:t75,
           lead:(first===null||t75===null)?null:t75-first};
@@ -1100,22 +1111,50 @@ function table(){
       tr.appendChild(td('\\pm '+r.r.limitC.toFixed(2)));
       tbb.appendChild(tr);});
     return;}
-  head([['\\text{modes }(k)',0],['\\text{detection delay, h}',1],
-        ['\\text{lead vs 75 °C, h}',1],['\\text{recall, \\%}',1]]);
-  /* the win mark goes on the OUTCOME, not on the tightest fit: the earliest alarm, and any
-     lead at all over the limit the plant already has on the wall */
+  /* WHAT RAISING k BUYS, AND WHAT IT COSTS (RIT 2026-09-03). This tab used to print delay,
+     lead and recall only, and on the opening week those read 3 / 17 / 63 at k = 2, 3 and 4
+     alike: three rows saying that assuming four modes is exactly as good as assuming two, and
+     no column anywhere saying otherwise. Two columns were missing, and they are the cost.
+
+       smallest mode, h   the hours behind the THINNEST of the k modes -- 48, 24, 12, 9 as k
+                          climbs. Deterministic, on every week, and it is the reason for the
+                          other column: a mean and a 3 sd limit learned from nine hours is not
+                          a baseline anyone should act on.
+       false alarms, h    what it did to the 24 QUIET test hours. Measured over 40 weeks,
+                          raising k from 2 to 3 takes the weeks carrying at least one false
+                          alarm from 30% to 50%; on a single week it is often 0 at every k,
+                          which is exactly why the thin-mode column has to be there too.
+
+     Together with recall these three account for every hour of the test half, in the units an
+     operator uses -- hours, not rates. */
+  head([['\\text{modes }(k)',0],['\\text{smallest mode, h}',1],
+        ['\\text{detection delay, h}',1],['\\text{lead vs 75 °C, h}',1],
+        ['\\text{recall, \\%}',1],['\\text{false alarms, h}',1]]);
+  /* ONE WINNER, AND IT IS THE CHEAPEST WAY TO THE EARLIEST ALARM. The mark used to go to
+     EVERY row that tied on the earliest delay, so k = 2, 3 and 4 all came up green and the
+     table recommended nothing. Rows still have to win on the OUTCOME first -- the earliest
+     alarm, never the tightest fit -- but among rows that reach it, the one that got there on
+     the most hours per mode is the one to copy: same result, fewer assumptions, more evidence
+     behind each limit. On the single-mode machine every k ties on delay, so k = 1 takes the
+     mark, which is the true answer there. */
   let bv=Infinity;
   rows.forEach(function(r){if(r.r.delay!==null&&r.r.delay<bv)bv=r.r.delay;});
+  let best=null;
+  rows.forEach(function(r){
+    if(r.r.delay!==bv)return;
+    if(best===null||r.r.smallest>best.r.smallest)best=r;});
   rows.forEach(function(r){
     const tr=document.createElement('tr');
     if(r.k===K)tr.className='sel';
-    const w=(r.r.delay!==null&&r.r.delay<=bv);
+    const w=(r===best);
     tr.appendChild(th('\\text{'+r.k+'}',w?'win':''));
+    tr.appendChild(td(String(r.r.smallest)));
     tr.appendChild(td(r.r.delay===null?'\\text{never}':String(r.r.delay),
                       r.r.delay===null?'bad':(w?'win':'')));
     tr.appendChild(td(r.r.lead===null?'\\text{--}':String(r.r.lead),
                       (r.r.lead!==null&&r.r.lead>0)?'win':'bad'));
     tr.appendChild(td(String(Math.round(100*r.r.rec))));
+    tr.appendChild(td(String(r.r.fp),r.r.fp?'bad':''));
     tbb.appendChild(tr);});
 }
 
@@ -1161,6 +1200,7 @@ window.LAB={
       for(let i=0;i<HIST;i++)n[km.train[i]]++;
       const r=baseline(k);
       o.modes[k]={sizes:n,means:r.mu.map(function(v){return +v.toFixed(4);}),
+                  smallest:r.smallest,fp:r.fp,
                   sd:+r.sd.toFixed(4),limitC:+r.limitC.toFixed(4),
                   delay:r.delay,lead:r.lead,rec:+r.rec.toFixed(4),
                   first:r.first,t75:r.t75};}
