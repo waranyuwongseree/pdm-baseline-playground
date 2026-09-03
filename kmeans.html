@@ -237,6 +237,8 @@ body.distcls .wrap{height:auto;max-height:900px}   /* เนื้อหาส�
   .pg .panel .seg[data-for="k"] button:nth-child(2n){border-left:1px solid #e6e6e0!important}
   .pg .panel .seg[data-for="machine"] button:nth-child(n+3),
   .pg .panel .seg[data-for="k"] button:nth-child(n+3){border-top:1px solid #e6e6e0!important}
+  /* three machines in a two-column grid: the third takes the whole row */
+  .pg .panel .seg[data-for="machine"] button:nth-child(3){grid-column:1 / -1;border-left:0!important}
   /* Day 3's four table marks, copied verbatim (they were missing here, so tr.sel and the win
      marks painted nothing at all until 2026-09-03): the row for the k in the rail is tinted,
      the best outcome is green, an unusable one is red */
@@ -272,6 +274,7 @@ body.distcls .wrap{height:auto;max-height:900px}   /* เนื้อหาส�
         <div class="seg" data-for="machine">
           <button type="button" data-val="one">\(\text{One mode}\)</button>
           <button type="button" data-val="levels">\(\text{Two modes}\)</button>
+          <button type="button" data-val="three">\(\text{Three modes}\)</button>
         </div>
       </div>
       <div class="drow" id="c-k">
@@ -812,9 +815,17 @@ function sdOf(a){const m=mean(a);let s=0,n=0;for(const v of a){if(!ok(v))continu
    the guess on the right, and the tables say whether the guess paid. That nothing on the
    machine ANNOUNCES the mode is still the point of the day -- it belongs in the note under the
    chart and in this comment, not on a button. */
+/* tsep is how far apart the levels sit; blo/bhi is how long the machine holds a line-up.
+
+   THREE MODES CHANGE OFTENER, AND THEY HAVE TO. 48 hours of history cut into 6-12 hour blocks
+   is about five blocks; split three ways, one mode is left thinner than 10 hours in 58% of
+   weeks (measured over 200), and a mode fitted on a handful of hours is indistinguishable from
+   noise. At 3-6 hours the thinnest mode averages 9.4 h and k = 3 is learnable. one and levels
+   keep 6/12, which reproduces the old stream exactly -- their numbers do not move. */
 const MODEDEF={
-  one:   {n:1,tsep:0},
-  levels:{n:2,tsep:8}};
+  one:   {n:1,tsep:0,blo:6,bhi:12},
+  levels:{n:2,tsep:8,blo:6,bhi:12},
+  three: {n:3,tsep:4,blo:3,bhi:6}};
 function regen(){
   const r=PG.rng(seed*7919+29);
   const g=function(){let s=0;for(let i=0;i<12;i++)s+=r.next();return s-6;};
@@ -822,7 +833,8 @@ function regen(){
   TEMP=[];MODE=[];
   let m=0,left=0;
   for(let t=0;t<N;t++){
-    if(left<=0){m=Math.floor(r.next()*nm);left=6+Math.floor(r.next()*7);}   /* 6-12 h blocks */
+    if(left<=0){m=Math.floor(r.next()*nm);
+                left=D.blo+Math.floor(r.next()*(D.bhi-D.blo+1));}   /* one line-up, held */
     left--;
     const load=100+4.0*g();                   /* the hour's load: it moves the temperature */
     let temp=47+0.14*load+m*D.tsep+0.5*g();
@@ -934,6 +946,24 @@ function axes(c,box,x0,x1,y0,y1,xl,yl,noY){
     c.textBaseline='bottom';c.fillText(yl,0,0);c.restore();}
   return {PX:PX,PY:PY};
 }
+/* THE SAME VALUES AS A SHAPE, BESIDE THE PANEL THAT PLOTS THEM (RIT 2026-09-03: tab 2 was
+   the only tab without one). It shares the panel's y axis, so a hump lines up with the hours
+   that made it, and the axis is labelled once. `col` is given the middle of the bin, so a
+   caller can paint the part of the distribution that is past a limit in another colour. */
+function marginal(c,box,lo,hi,vals,col,xl){
+  const NB=22,by=new Array(NB).fill(0);
+  for(const v of vals){if(!ok(v))continue;
+    by[Math.max(0,Math.min(NB-1,Math.floor((v-lo)/(hi-lo)*NB)))]++;}
+  const tall=Math.max.apply(null,by),top=Math.max(4,Math.ceil((tall+1)/4)*4);
+  const A=axes(c,box,0,top,lo,hi,xl===undefined?'hours':xl,null,true);
+  const h=(box.b-box.t)/NB;
+  for(let j=0;j<NB;j++){
+    if(!by[j])continue;
+    const mid=lo+(j+0.5)*(hi-lo)/NB,y=A.PY(mid)-h*0.42;
+    c.fillStyle=col?col(mid):C.data;c.globalAlpha=0.75;
+    c.fillRect(A.PX(0),y,A.PX(by[j])-A.PX(0),h*0.84);}
+  c.globalAlpha=1;
+  return A;}
 function note(c,box,s){c.fillStyle=C.axtx;c.font='12.5px KaTeX_Main';
   c.textAlign='left';c.textBaseline='top';c.fillText(s,box.l+6,box.t+4);}
 function series(c,arr,A,col,w){c.strokeStyle=col;c.lineWidth=w||1.3;c.beginPath();
@@ -1000,7 +1030,7 @@ function draw(){
       c.lineTo(xe(r.b+0.5),A1.PY(mu[r.m]));c.stroke();});
     c.setLineDash([]);
     c.restore();
-    note(c,box1,'healthy history  ·  band = mode, dashed = its mean');
+    note(c,box1,'healthy history  ·  one band per mode');
     /* the same hours along the same axis. STACKED BY MODE, never painted with the bin's
        majority: a bin holding hours from two modes IS mixed, and collapsing it to one colour
        made neighbouring bins flip at k = 3 until the shape stopped reading as a shape. (The
@@ -1028,7 +1058,11 @@ function draw(){
   const b=baseline(K);
   const i0=(tab===T_MON)?HIST:0,i1=(tab===T_MON)?N:HIST;
   const half=Math.floor((B-T-24)/2);
-  const box1={l:L,r:R,t:T,b:T+half},box2={l:L,r:R,t:T+half+24,b:B};
+  /* two rows, and each row is a time plot with its own shape beside it -- the same pairing
+     tab 1 uses, on the same grid, so the four panels line up */
+  const HW=Math.max(96,Math.round((R-L)*0.24)),XR=R-HW-18;
+  const box1={l:L,r:XR,t:T,b:T+half},box2={l:L,r:XR,t:T+half+24,b:B};
+  const mar1={l:R-HW,r:R,t:T,b:T+half},mar2={l:R-HW,r:R,t:T+half+24,b:B};
   const seg=TEMP.slice(i0,i1).concat(b.exp.slice(i0,i1)).concat(tab===T_MON?[LIMIT_C]:[]);
   const ry=pad(seg,0.12);
   const A1=axes(c,box1,i0,i1-1,ry[0],ry[1],'','temperature, °C');
@@ -1037,6 +1071,8 @@ function draw(){
   series(c,b.exp,A1,C.exp,2.2);
   c.restore();
   if(tab===T_MON){hline(c,box1,A1,LIMIT_C,C.lim,[3,3]);vline(c,box1,A1,FAULT,C.fault);}
+  {const Am=marginal(c,mar1,ry[0],ry[1],TEMP.slice(i0,i1),null,'');
+   if(tab===T_MON)hline(c,mar1,Am,LIMIT_C,C.lim,[3,3]);}
   note(c,box1,(tab===T_MON?'test hours  ·  ':'healthy history  ·  ')+KNAME(K)+
     '  ·  sd '+b.sd.toFixed(2)+' °C');
   const zr=(tab===T_MON)?[-6,14]:[-6,6];
@@ -1045,6 +1081,11 @@ function draw(){
   series(c,b.z,A2,C.data,1.3);
   c.restore();
   hline(c,box2,A2,LIMZ,C.lim,[7,4]);hline(c,box2,A2,-LIMZ,C.lim,[7,4]);
+  /* the residual as a distribution, with the control limits drawn across it and everything
+     outside them in the alarm colour: the whole of the alarm rule in one picture */
+  {const Am=marginal(c,mar2,zr[0],zr[1],b.z.slice(i0,i1),
+     function(v){return Math.abs(v)>=LIMZ?C.mark:C.data;},'hours');
+   hline(c,mar2,Am,LIMZ,C.lim,[7,4]);hline(c,mar2,Am,-LIMZ,C.lim,[7,4]);}
   if(tab===T_MON){
     vline(c,box2,A2,FAULT,C.fault);
     c.fillStyle=C.mark;
@@ -1093,7 +1134,10 @@ function table(){
        saying the third mode was invented. The mean columns are in the same index order as the
        hours beside them, so the counts and the centres line up value for value. */
     const KMAX=Math.max.apply(null,KS);
-    const hd=[['\\text{modes }(k)',0],['\\text{hours per mode}',1]];
+    /* `hours per mode` was cut on RIT's word (2026-09-03): the mean columns already say how
+       many modes a row has and where each one sits, and nothing on the page acts on the count
+       of hours behind them. */
+    const hd=[['\\text{modes }(k)',0]];
     for(let j=1;j<=KMAX;j++)hd.push(['\\text{mean }'+j+',\\ ^\\circ\\text{C}',1]);
     hd.push(['\\text{residual sd},\\ ^\\circ\\text{C}',1]);
     head(hd);
@@ -1101,7 +1145,6 @@ function table(){
       const tr=document.createElement('tr');
       if(r.k===K)tr.className='sel';
       tr.appendChild(kcell(r));
-      tr.appendChild(td(r.n.join('\\ /\\ ')));
       for(let j=0;j<KMAX;j++)
         tr.appendChild(td(j<r.r.mu.length?r.r.mu[j].toFixed(1):''));
       tr.appendChild(td(r.r.sd.toFixed(2)));
