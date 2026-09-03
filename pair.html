@@ -280,6 +280,7 @@ body.distcls .wrap{height:auto;max-height:900px}   /* เนื้อหาส�
         <div class="seg" data-for="stat">
           <button type="button" data-val="maxz">\(\text{Each sensor}\)</button>
           <button type="button" data-val="t2">\(\text{The pair }(T^2)\)</button>
+          <button type="button" data-val="mewma" id="bMewma">\(\text{MEWMA}\)</button>
         </div>
       </div>
       <div class="row" id="rowRun">
@@ -749,8 +750,15 @@ if (typeof document !== 'undefined') (function () {
 const N=96,HIST=48,FAULT=72;
 const LIM_Z=3, LIM_T2=11.829007;         /* chi-square(2) at alpha = 0.0027, as the workflow */
 const M1=48.0,SD1=2.2, M2=70.0,SD2=1.5, RHO=0.95;
-const RULES=['maxz','t2'];
-const RNAME={maxz:'each sensor',t2:'the pair'};
+/* the baseline tab compares the two rules that CAN be judged on baseline hours; the
+   monitoring tab adds MEWMA, whose first hours are a warm-up rather than a reading */
+const RULES=['maxz','t2'], MON_RULES=['maxz','t2','mewma'];
+const RNAME={maxz:'each sensor',t2:'the pair',mewma:'MEWMA'};
+const LAM=0.2;                       /* the workflow's own: 2/(win 9 + 1) */
+/* ONE NAME PER RULE. The axis label and the key each carried their own conditional, and
+   when MEWMA arrived only the data followed it in -- the plot drew MEWMA and both labels
+   still said T2. A label that disagrees with the picture is worse than no label. */
+const CHARTNAME={maxz:'max |z|',t2:'T\u00b2',mewma:'MEWMA'};
 const T_DATA=0,T_RULE=1,T_MON=2;
 const C={s1:'#33618D',s2:'#C07E00',stat:'#1E7A56',lim:'#B0503A',mark:'#B0503A',
          data:'#6E93B8',ax:'#94a3b8',axtx:'#64748b',grid:'#eef1f5',fault:'#B07AAE',ell:'#1F2A37'};
@@ -798,13 +806,18 @@ function stats(a,b){
   for(let i=0;i<N;i++){z1.push((a[i]-m1)/d1);z2.push((b[i]-m2)/d2);}
   let r=0;for(let i=0;i<HIST;i++)r+=z1[i]*z2[i];r/=HIST;
   const den=Math.max(1e-9,1-r*r);
-  const maxz=[],t2=[];
+  const maxz=[],t2=[],mew=[];
+  /* MEWMA, the workflow's third lane: the same quadratic form on exponentially weighted z,
+     first value w = z as KNIME's Moving Average sets it, divided by lam/(2 - lam) */
+  let w1=z1[0],w2=z2[0];
   for(let i=0;i<N;i++){
     maxz.push(Math.max(Math.abs(z1[i]),Math.abs(z2[i])));
-    t2.push((z1[i]*z1[i]-2*r*z1[i]*z2[i]+z2[i]*z2[i])/den);}
-  return {z1:z1,z2:z2,r:r,maxz:maxz,t2:t2};
+    t2.push((z1[i]*z1[i]-2*r*z1[i]*z2[i]+z2[i]*z2[i])/den);
+    if(i>0){w1=LAM*z1[i]+(1-LAM)*w1;w2=LAM*z2[i]+(1-LAM)*w2;}
+    mew.push((w1*w1-2*r*w1*w2+w2*w2)/(den*(LAM/(2-LAM))));}
+  return {z1:z1,z2:z2,r:r,maxz:maxz,t2:t2,mewma:mew};
 }
-function limOf(k){return k==='maxz'?LIM_Z:LIM_T2;}
+function limOf(k){return k==='maxz'?LIM_Z:LIM_T2;}   /* the pair and MEWMA share chi2(2) */
 /* the operator's readings, counted the way Day 3 counts them */
 function score(v,lim){
   let first=null,tp=0,fp=0;
@@ -819,11 +832,11 @@ function score(v,lim){
 const WEEKS=40,COST={};
 function cost(m){
   if(COST[m])return COST[m];
-  const out={};for(const k of RULES)out[k]=0;
+  const out={};for(const k of MON_RULES)out[k]=0;
   for(let sk=1;sk<=WEEKS;sk++){
     const w=genWeek(m,sk),S=stats(w.a,w.b);
-    for(const k of RULES)if(score(S[k],limOf(k)).fp>0)out[k]++;}
-  for(const k of RULES)out[k]/=WEEKS;
+    for(const k of MON_RULES)if(score(S[k],limOf(k)).fp>0)out[k]++;}
+  for(const k of MON_RULES)out[k]/=WEEKS;
   return (COST[m]=out);
 }
 
@@ -907,25 +920,36 @@ function draw(){
        the same length on both axes or the ellipse's tilt -- which IS the correlation -- would
        be a lie about the geometry. The space under it carries the key, so nothing is left
        blank. The time series takes the rest of the width. */
-    const STRIP=40;                       /* two reserved rows: the keys, then the regions */
+    /* ONE SENSOR PER PANEL (RIT 2026-09-03: "กราฟ time serie แยกสองกราฟเลย"). Stacked on a
+       shared hour axis, each with its own 3 sd lines, so neither has to be picked out of the
+       other by colour. The hour numbers are written once, under the lower panel. */
+    const STRIP=40,GAP=22;
     const SW=Math.min(Math.round((R-L)*0.44),B-T-STRIP);
-    const box1={l:L,r:R-SW-62,t:T+STRIP,b:B},box2={l:R-SW,r:R,t:T+STRIP,b:T+STRIP+SW};
-    /* the sensors' own range, never tighter than the limit lines they are judged against */
+    const XR=R-SW-62;
+    const hh=Math.floor((B-T-STRIP-GAP)/2);
+    const boxA={l:L,r:XR,t:T+STRIP,b:T+STRIP+hh},
+          boxB={l:L,r:XR,t:T+STRIP+hh+GAP,b:B},
+          box2={l:R-SW,r:R,t:T+STRIP,b:T+STRIP+SW};
+    /* each sensor gets the same range, never tighter than the limits it is judged against, so
+       the two panels can be compared by eye */
     let lo=-3.6,hi=3.6;
     for(let i=0;i<N;i++){lo=Math.min(lo,S.z1[i]-0.4,S.z2[i]-0.4);
                          hi=Math.max(hi,S.z1[i]+0.4,S.z2[i]+0.4);}
-    const A1=axes(c,box1,0,N-1,lo,hi,'hour','sensor  (z)');
-    keys(c,box1.l,T-2,[{col:C.s1,txt:'motor current'},{col:C.s2,txt:'bearing temp'},
+    const A1=axes(c,boxA,0,N-1,lo,hi,'','motor current  (z)',true);
+    const A1b=axes(c,boxB,0,N-1,lo,hi,'hour','bearing temp  (z)');
+    keys(c,boxA.l,T-2,[{col:C.s1,txt:'motor current'},{col:C.s2,txt:'bearing temp'},
                        {col:C.lim,dash:true,txt:'each sensor, 3 sd'}]);
     regionStrip(c,A1.PX,T+16,
       [{a:0,b:HIST,name:'normal learned here 0\u2013'+HIST,bar:'rgba(91,143,185,0.55)',txt:C.s1},
        {a:HIST,b:FAULT,name:'healthy '+HIST+'\u2013'+FAULT,bar:'rgba(107,163,140,0.6)',txt:'#1E7A56'},
        {a:FAULT,b:N-1,name:'fault '+FAULT+'\u2013'+N,bar:'rgba(176,122,174,0.7)',txt:'#8E5AA8'}]);
-    c.save();c.beginPath();c.rect(box1.l,box1.t,box1.r-box1.l,box1.b-box1.t);c.clip();
-    series(c,S.z1,A1,C.s1,1.5);series(c,S.z2,A1,C.s2,1.5);
-    c.restore();
-    hline(c,box1,A1,LIM_Z,C.lim,[3,3]);hline(c,box1,A1,-LIM_Z,C.lim,[3,3]);
-    vline(c,box1,A1,FAULT,C.fault);
+    [[boxA,A1,S.z1,C.s1],[boxB,A1b,S.z2,C.s2]].forEach(function(q){
+      const bx=q[0],A=q[1];
+      c.save();c.beginPath();c.rect(bx.l,bx.t,bx.r-bx.l,bx.b-bx.t);c.clip();
+      series(c,q[2],A,q[3],1.5);
+      c.restore();
+      hline(c,bx,A,LIM_Z,C.lim,[3,3]);hline(c,bx,A,-LIM_Z,C.lim,[3,3]);
+      vline(c,bx,A,FAULT,C.fault);});
 
     /* the same hours as a pair, with equal z per pixel on both axes */
     const A2=axes(c,box2,-5,5,-5,5,'current  (z)','temperature  (z)');
@@ -976,8 +1000,8 @@ function draw(){
   if(tab===T_MON)vline(c,box1,A1,FAULT,C.fault);
   const v=S[rule],lim=limOf(rule),sc=score(v,lim);
   const top=Math.max(lim*1.6,Math.max.apply(null,v.slice(i0,i1))*1.1);
-  const A2=axes(c,box2,i0,i1-1,0,top,'hour',rule==='maxz'?'max |z|':'T\u00b2');
-  keys(c,box2.l,box2.t-KEY2-2,[{col:C.stat,txt:rule==='maxz'?'max |z|':'T\u00b2'},
+  const A2=axes(c,box2,i0,i1-1,0,top,'hour',CHARTNAME[rule]);
+  keys(c,box2.l,box2.t-KEY2-2,[{col:C.stat,txt:CHARTNAME[rule]},
     {col:C.lim,dash:true,txt:'limit '+lim.toFixed(2)}].concat(
     tab===T_MON?[{col:C.mark,dot:true,txt:sc.first===null?'no alarm':
       ('first alarm, '+sc.delay+' h after the fault')}]
@@ -1002,8 +1026,10 @@ function table(){
   const head=function(cols){cols.forEach(function(h){const e=th(h[0]);
     if(h[1])e.style.textAlign='right';thr.appendChild(e);});};
   const S=stats();
-  const nm={maxz:'\\text{each sensor}',t2:'\\text{the pair }(T^2)'};
-  const rows=RULES.map(function(k){return {k:k,v:S[k],r:score(S[k],limOf(k))};});
+  const nm={maxz:'\\text{each sensor}',t2:'\\text{the pair }(T^2)',
+            mewma:'\\text{MEWMA}'};
+  const rows=(tab===T_MON?MON_RULES:RULES).map(function(k){
+    return {k:k,v:S[k],r:score(S[k],limOf(k))};});
   if(tab===T_DATA){
     /* the point of the tab as three numbers: both rules are set to the same false-alarm rate,
        and on the faulty hours one of them moves and the other does not */
@@ -1065,8 +1091,10 @@ function table(){
     tr.appendChild(td(String(Math.round(100*CT[r.k])),
                       (best&&CT[r.k]>CT[best.k])?'bad':(w?'win':'')));
     tbb.appendChild(tr);});
-  tnote('false-alarm weeks is measured over 40 weeks of this machine: the share in which the '+
-        'rule cried wolf in the quiet hours. The rest is the week on screen.');
+  tnote('MEWMA is the pair statistic with a memory: \u03bb = '+LAM.toFixed(2)+', the '+
+        'workflow\u2019s own. false-alarm weeks is measured over 40 weeks of this machine \u2014 '+
+        'the share in which the rule cried wolf in the quiet hours. The rest is the week '+
+        'on screen.');
 }
 
 /* ---------------- rail, tabs, wiring ---------------- */
@@ -1077,10 +1105,16 @@ function syncRows(){
   const set=function(id,st){const e=document.getElementById(id);
     e.classList.toggle('off',st==='hide');e.classList.toggle('lock',st==='lock');};
   set('c-machine','live');
-  /* tab 1 draws BOTH rules at once -- the square and the ellipse -- so choosing one there
-     would be a control that changes nothing. It is dimmed rather than hidden, so the rail
-     does not change height between tabs. */
-  set('c-stat',tab===T_DATA?'lock':'live');
+  /* TAB 1 HAS NO RULE CONTROL AT ALL (RIT 2026-09-03: "control ไม่ต้อง hide เอาออกไปเลย").
+     That tab draws both rules at once -- the square and the ellipse -- so a control there
+     changes nothing, and a dimmed control is still a control sitting in the way. The rail
+     keeps its height because .rail carries min-height. */
+  set('c-stat',tab===T_DATA?'hide':'live');
+  /* MEWMA is a monitoring rule only: it starts with no memory to average, so its first hours
+     are a warm-up, and a warm-up peak on the baseline tab would be read as a baseline reading */
+  const bm=document.getElementById('bMewma');
+  if(bm)bm.style.display=(tab===T_MON)?'':'none';
+  if(tab!==T_MON&&rule==='mewma'){rule='t2';paint('stat',rule);}
 }
 function refresh(){syncRows();regen();draw();table();}
 function setSeg(name,v){
@@ -1108,9 +1142,10 @@ window.LAB={
     /* the hour range the tab actually draws -- tab 2 is the baseline, so the gate can hold
        it to 0..HIST-1 instead of trusting that the picture looks right */
     const shown=(tab===T_MON)?[HIST,N-1]:(tab===T_RULE?[0,HIST-1]:[0,N-1]);
-    const o={tab:tab,machine:mach,rule:rule,seed:seed,shownHours:shown,
+    const chartLabel=(tab===T_DATA)?null:CHARTNAME[rule];
+    const o={tab:tab,machine:mach,rule:rule,seed:seed,shownHours:shown,chartLabel:chartLabel,
              n:N,hist:HIST,faultStart:FAULT,r:+S.r.toFixed(4),stats:{}};
-    for(const k of RULES){
+    for(const k of MON_RULES){
       const sc=score(S[k],limOf(k));
       let flag=0;for(let i=0;i<HIST;i++)if(S[k][i]>=limOf(k))flag++;
       let hb=-Infinity;for(let i=0;i<HIST;i++)hb=Math.max(hb,S[k][i]);
