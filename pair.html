@@ -223,20 +223,24 @@ body.distcls .wrap{height:auto;max-height:900px}   /* เนื้อหาส�
 !function(e,t){"object"==typeof exports&&"object"==typeof module?module.exports=t(require("katex")):"function"==typeof define&&define.amd?define(["katex"],t):"object"==typeof exports?exports.renderMathInElement=t(require("katex")):e.renderMathInElement=t(e.katex)}("undefined"!=typeof self?self:this,(function(e){return function(){"use strict";var t={771:function(t){t.exports=e}},r={};function n(e){var i=r[e];if(void 0!==i)return i.exports;var a=r[e]={exports:{}};return t[e](a,a.exports,n),a.exports}n.n=function(e){var t=e&&e.__esModule?function(){return e.default}:function(){return e};return n.d(t,{a:t}),t},n.d=function(e,t){for(var r in t)n.o(t,r)&&!n.o(e,r)&&Object.defineProperty(e,r,{enumerable:!0,get:t[r]})},n.o=function(e,t){return Object.prototype.hasOwnProperty.call(e,t)};var i={};return function(){n.d(i,{default:function(){return s}});var e=n(771),t=n.n(e),r=function(e,t,r){for(var n=r,i=0,a=e.length;n<t.length;){var o=t[n];if(i<=0&&t.slice(n,n+a)===e)return n;"\\"===o?n++:"{"===o?i++:"}"===o&&i--,n++}return-1},a=/^\\begin{/,o=function(e,t){for(var n,i=[],o=new RegExp("("+t.map((function(e){return e.left.replace(/[-/\\^$*+?.()|[\]{}]/g,"\\$&")})).join("|")+")");-1!==(n=e.search(o));){n>0&&(i.push({type:"text",data:e.slice(0,n)}),e=e.slice(n));var l=t.findIndex((function(t){return e.startsWith(t.left)}));if(-1===(n=r(t[l].right,e,t[l].left.length)))break;var d=e.slice(0,n+t[l].right.length),s=a.test(d)?d:e.slice(t[l].left.length,n);i.push({type:"math",data:s,rawData:d,display:t[l].display}),e=e.slice(n+t[l].right.length)}return""!==e&&i.push({type:"text",data:e}),i},l=function(e,r){var n=o(e,r.delimiters);if(1===n.length&&"text"===n[0].type)return null;for(var i=document.createDocumentFragment(),a=0;a<n.length;a++)if("text"===n[a].type)i.appendChild(document.createTextNode(n[a].data));else{var l=document.createElement("span"),d=n[a].data;r.displayMode=n[a].display;try{r.preProcess&&(d=r.preProcess(d)),t().render(d,l,r)}catch(e){if(!(e instanceof t().ParseError))throw e;r.errorCallback("KaTeX auto-render: Failed to parse `"+n[a].data+"` with ",e),i.appendChild(document.createTextNode(n[a].rawData));continue}i.appendChild(l)}return i},d=function e(t,r){for(var n=0;n<t.childNodes.length;n++){var i=t.childNodes[n];if(3===i.nodeType){for(var a=i.textContent,o=i.nextSibling,d=0;o&&o.nodeType===Node.TEXT_NODE;)a+=o.textContent,o=o.nextSibling,d++;var s=l(a,r);if(s){for(var f=0;f<d;f++)i.nextSibling.remove();n+=s.childNodes.length-1,t.replaceChild(s,i)}else n+=d}else 1===i.nodeType&&function(){var t=" "+i.className+" ";-1===r.ignoredTags.indexOf(i.nodeName.toLowerCase())&&r.ignoredClasses.every((function(e){return-1===t.indexOf(" "+e+" ")}))&&e(i,r)}()}},s=function(e,t){if(!e)throw new Error("No element provided to render");var r={};for(var n in t)t.hasOwnProperty(n)&&(r[n]=t[n]);r.delimiters=r.delimiters||[{left:"$$",right:"$$",display:!0},{left:"\\(",right:"\\)",display:!1},{left:"\\begin{equation}",right:"\\end{equation}",display:!0},{left:"\\begin{align}",right:"\\end{align}",display:!0},{left:"\\begin{alignat}",right:"\\end{alignat}",display:!0},{left:"\\begin{gather}",right:"\\end{gather}",display:!0},{left:"\\begin{CD}",right:"\\end{CD}",display:!0},{left:"\\[",right:"\\]",display:!0}],r.ignoredTags=r.ignoredTags||["script","noscript","style","textarea","pre","code","option"],r.ignoredClasses=r.ignoredClasses||[],r.errorCallback=r.errorCallback||console.error,r.macros=r.macros||{},d(e,r)}}(),i=i.default}()}));
 </script>
 <style>
-  :root{--panel-h:560px}   /* one value, every tab the same height (UD trap 4) */
+  :root{--panel-h:350px}   /* the fullest control column, not a round number: the token is
+                            per-file by the standard, and 560 left the rail half empty */
   .pg .layout>.stage{align-self:start}
   .pg .layout>.rail{grid-column:2;min-width:0;align-self:start;display:flex;flex-direction:column;align-items:stretch;min-height:var(--panel-h)}
   .pg .rail>.panel{width:100%;min-width:0;align-self:stretch;min-height:0}
-  .pg .canvasbox{height:clamp(320px,54vh,500px)}
-  /* the fault and the rule are lists of equals, one per row: a control sized unlike its
+  /* THE STANDARD'S OWN VALUE (UNIVERSAL_DESIGN.md line 42: clamp(260px, 44vh, 400px)).
+     I had invented clamp(320px,54vh,500px), a hundred pixels taller, and the table under the
+     figure went off the bottom of the screen -- the numbers are the point of the table. */
+  .pg .canvasbox{height:clamp(260px,44vh,400px)}
+  /* the fault and the method are lists of equals, one per row: a control sized unlike its
      neighbours reads as a caption over them (Day 4 S1, RIT 2026-09-03) */
-  .pg .panel .seg[data-for="machine"],.pg .panel .seg[data-for="stat"]{
+  .pg .panel .seg[data-for="fault"],.pg .panel .seg[data-for="model"]{
     display:grid;grid-template-columns:1fr;width:100%;min-width:0;
     border:1px solid #e6e6e0;border-radius:8px;overflow:hidden}
-  .pg .panel .seg[data-for="machine"] button,.pg .panel .seg[data-for="stat"] button{
+  .pg .panel .seg[data-for="fault"] button,.pg .panel .seg[data-for="model"] button{
     font-size:14px;padding:6px 3px;cursor:pointer;border:0!important;text-align:center}
-  .pg .panel .seg[data-for="machine"] button+button,
-  .pg .panel .seg[data-for="stat"] button+button{border-top:1px solid #e6e6e0!important}
+  .pg .panel .seg[data-for="fault"] button+button,
+  .pg .panel .seg[data-for="model"] button+button{border-top:1px solid #e6e6e0!important}
   #tnote{font-size:13px;color:#64748b;padding:6px 10px 0;line-height:1.45}
   .pg .mtab td.win,.pg .mtab th.win{color:#1E7A56;font-weight:600}
   .pg .mtab td.bad{color:#B0503A}
@@ -267,19 +271,19 @@ body.distcls .wrap{height:auto;max-height:900px}   /* เนื้อหาส�
     </div>
     <div class="rail">
     <div class="panel">
-      <div class="drow" id="c-machine">
+      <div class="drow" id="c-fault">
         <span class="dlab" style="flex:0 0 auto;color:#475569;font-size:15px;font-weight:600">\(\text{Fault}\)</span>
-        <div class="seg" data-for="machine">
-          <button type="button" data-val="both">\(\text{Both drift}\)</button>
-          <button type="button" data-val="one">\(\text{One drifts}\)</button>
-          <button type="button" data-val="small">\(\text{Small shift}\)</button>
+        <div class="seg" data-for="fault">
+          <button type="button" data-val="both">\(\text{Slow drift, both}\)</button>
+          <button type="button" data-val="one">\(\text{Slow drift, one}\)</button>
+          <button type="button" data-val="small">\(\text{Step jump, one}\)</button>
         </div>
       </div>
-      <div class="drow" id="c-stat">
-        <span class="dlab" style="flex:0 0 auto;color:#475569;font-size:15px;font-weight:600">\(\text{Rule}\)</span>
-        <div class="seg" data-for="stat">
-          <button type="button" data-val="maxz">\(\text{Each sensor}\)</button>
-          <button type="button" data-val="t2">\(\text{The pair }(T^2)\)</button>
+      <div class="drow" id="c-model">
+        <span class="dlab" style="flex:0 0 auto;color:#475569;font-size:15px;font-weight:600">\(\text{Method}\)</span>
+        <div class="seg" data-for="model">
+          <button type="button" data-val="maxz">\(\max |z|\)</button>
+          <button type="button" data-val="t2">\(T^2\)</button>
           <button type="button" data-val="mewma" id="bMewma">\(\text{MEWMA}\)</button>
         </div>
       </div>
@@ -753,12 +757,13 @@ const M1=48.0,SD1=2.2, M2=70.0,SD2=1.5, RHO=0.95;
 /* the baseline tab compares the two rules that CAN be judged on baseline hours; the
    monitoring tab adds MEWMA, whose first hours are a warm-up rather than a reading */
 const RULES=['maxz','t2'], MON_RULES=['maxz','t2','mewma'];
-const RNAME={maxz:'each sensor',t2:'the pair',mewma:'MEWMA'};
+/* the workflow's own lane names (RULES.md item 7) -- not renamed here */
+const RNAME={maxz:'max |z|',t2:'T\u00b2',mewma:'MEWMA'};
 const LAM=0.2;                       /* the workflow's own: 2/(win 9 + 1) */
 /* ONE NAME PER RULE. The axis label and the key each carried their own conditional, and
    when MEWMA arrived only the data followed it in -- the plot drew MEWMA and both labels
    still said T2. A label that disagrees with the picture is worse than no label. */
-const CHARTNAME={maxz:'max |z|',t2:'T\u00b2',mewma:'MEWMA'};
+const CHARTNAME=RNAME;   /* the axis, the key and the table all read one map */
 const T_DATA=0,T_RULE=1,T_MON=2;
 const C={s1:'#33618D',s2:'#C07E00',stat:'#1E7A56',lim:'#B0503A',mark:'#B0503A',
          data:'#6E93B8',ax:'#94a3b8',axtx:'#64748b',grid:'#eef1f5',fault:'#B07AAE',ell:'#1F2A37'};
@@ -951,8 +956,8 @@ function draw(){
     c.restore();
     /* the two boundaries, named where they are drawn: a dashed box and an ellipse are the one
        thing the axes cannot name. Four words. */
-    annotate(c,A2.PX(-LIM_Z)+3,A2.PY(LIM_Z)-9,'each sensor',C.lim);
-    annotate(c,box2.r-4,box2.t+10,'the pair',C.ell,'right');
+    annotate(c,A2.PX(-LIM_Z)+3,A2.PY(LIM_Z)-9,'max |z|',C.lim);
+    annotate(c,box2.r-4,box2.t+10,'T\u00b2',C.ell,'right');
     return;}
   /* tabs 2 and 3: the two sensors above, the chosen rule below.
      TAB 2 IS THE BASELINE AND HOLDS NOTHING ELSE (RIT 2026-09-03: "tab 2 มันคือ baseline จะเอา
@@ -998,15 +1003,14 @@ function table(){
   const head=function(cols){cols.forEach(function(h){const e=th(h[0]);
     if(h[1])e.style.textAlign='right';thr.appendChild(e);});};
   const S=stats();
-  const nm={maxz:'\\text{each sensor}',t2:'\\text{the pair }(T^2)',
-            mewma:'\\text{MEWMA}'};
+  const nm={maxz:'\\max |z|',t2:'T^2',mewma:'\\text{MEWMA}'};
   const rows=(tab===T_MON?MON_RULES:RULES).map(function(k){
     return {k:k,v:S[k],r:score(S[k],limOf(k))};});
   if(tab===T_DATA){
     /* the point of the tab as three numbers: both rules are set to the same false-alarm rate,
        and on the faulty hours one of them moves and the other does not */
-    head([['\\text{rule}',0],['\\text{limit}',1],['\\text{highest, healthy hours}',1],
-          ['\\text{highest, faulty hours}',1]]);
+    head([['\\text{Method}',0],['\\text{control limit}',1],
+          ['\\text{highest, healthy hours}',1],['\\text{highest, faulty hours}',1]]);
     rows.forEach(function(r){
       const tr=document.createElement('tr');
       const hi1=Math.max.apply(null,r.v.slice(0,FAULT)),hi2=Math.max.apply(null,r.v.slice(FAULT));
@@ -1025,8 +1029,8 @@ function table(){
        reaches inside them, and the headroom between the two. What does NOT belong here is an
        exceedance count or a first alarm hour -- an hour cannot be an anomaly against a limit
        it helped define, and the test hours are not on this tab at all. */
-    head([['\\text{rule}',0],['\\text{learned from the baseline}',0],['\\text{limit}',1],
-          ['\\text{highest, baseline hours}',1],['\\text{headroom}',1]]);
+    head([['\\text{Method}',0],['\\text{what it learns}',0],['\\text{control limit}',1],
+          ['\\text{highest, baseline hours}',1]]);
     const learned={maxz:'\\text{a mean and a spread per sensor}',
                    t2:'\\text{...and the correlation between them}'};
     rows.forEach(function(r){
@@ -1038,14 +1042,13 @@ function table(){
       tr.appendChild(td(learned[r.k],'lft'));
       tr.appendChild(td(limOf(r.k).toFixed(2)));
       tr.appendChild(td(hi.toFixed(2)));
-      tr.appendChild(td((limOf(r.k)-hi).toFixed(2)));
       tbb.appendChild(tr);});
     tnote('The baseline is hours 0 to '+HIST+', and this tab shows nothing else: no fault, no '+
           'alarms, nothing scored. Both limits are set for the same false-alarm rate, so on '+
           'these hours both statistics stay under their own limit with room to spare.');
     return;}
   const CT=cost(mach);
-  head([['\\text{rule}',0],['\\text{detection delay, h}',1],['\\text{recall, \\%}',1],
+  head([['\\text{Method}',0],['\\text{detection delay, h}',1],['\\text{recall, \\%}',1],
         ['\\text{false alarms, h}',1],['\\text{false-alarm weeks, \\%}',1]]);
   let bv=Infinity;
   rows.forEach(function(r){if(r.r.delay!==null&&r.r.delay<bv)bv=r.r.delay;});
@@ -1065,7 +1068,7 @@ function table(){
     tbb.appendChild(tr);});
   tnote('MEWMA is the pair statistic with a memory: \u03bb = '+LAM.toFixed(2)+', the '+
         'workflow\u2019s own. false-alarm weeks is measured over 40 weeks of this machine \u2014 '+
-        'the share in which the rule cried wolf in the quiet hours. The rest is the week '+
+        'the share in which the method cried wolf in the quiet hours. The rest is the week '+
         'on screen.');
 }
 
@@ -1076,27 +1079,27 @@ function paint(name,v){document.querySelectorAll('.seg[data-for="'+name+'"] butt
 function syncRows(){
   const set=function(id,st){const e=document.getElementById(id);
     e.classList.toggle('off',st==='hide');e.classList.toggle('lock',st==='lock');};
-  set('c-machine','live');
+  set('c-fault','live');
   /* TAB 1 HAS NO RULE CONTROL AT ALL (RIT 2026-09-03: "control ไม่ต้อง hide เอาออกไปเลย").
      That tab draws both rules at once -- the square and the ellipse -- so a control there
      changes nothing, and a dimmed control is still a control sitting in the way. The rail
      keeps its height because .rail carries min-height. */
-  set('c-stat',tab===T_DATA?'hide':'live');
+  set('c-model',tab===T_DATA?'hide':'live');
   /* MEWMA is a monitoring rule only: it starts with no memory to average, so its first hours
      are a warm-up, and a warm-up peak on the baseline tab would be read as a baseline reading */
   const bm=document.getElementById('bMewma');
   if(bm)bm.style.display=(tab===T_MON)?'':'none';
-  if(tab!==T_MON&&rule==='mewma'){rule='t2';paint('stat',rule);}
+  if(tab!==T_MON&&rule==='mewma'){rule='t2';paint('model',rule);}
 }
 function refresh(){syncRows();regen();draw();table();}
 function setSeg(name,v){
-  if(name==='machine')mach=v; else if(name==='stat')rule=v;
+  if(name==='fault')mach=v; else if(name==='model')rule=v;
   paint(name,v);refresh();}
 function applyTab(i){tab=i;
   document.querySelectorAll('.tabbtn').forEach(function(b,j){b.className='tabbtn'+(j===i?' on':'');});
   refresh();}
-const TABS=[{name:'\\text{1. The data}'},{name:'\\text{2. Baseline}'},{name:'\\text{3. Monitoring}'}];
-['machine','stat'].forEach(function(nm){
+const TABS=[{name:'\\text{1. The pair}'},{name:'\\text{2. Baseline}'},{name:'\\text{3. Monitoring}'}];
+['fault','model'].forEach(function(nm){
   document.querySelectorAll('.seg[data-for="'+nm+'"] button').forEach(function(b){
     b.addEventListener('click',function(){setSeg(nm,b.getAttribute('data-val'));});});});
 document.getElementById('resetBtn').addEventListener('click',function(){seed++;refresh();});
@@ -1105,7 +1108,7 @@ const tb=document.getElementById('tabs');
 TABS.forEach(function(T,i){const b=document.createElement('button');b.className='tabbtn';
   (window.katex?katex.render(T.name,b,{throwOnError:false}):(b.textContent=T.name));
   b.onclick=function(){applyTab(i);};tb.appendChild(b);});
-paint('machine',mach);paint('stat',rule);
+paint('fault',mach);paint('model',rule);
 applyTab(T_DATA);
 
 window.LAB={
@@ -1115,7 +1118,7 @@ window.LAB={
        it to 0..HIST-1 instead of trusting that the picture looks right */
     const shown=(tab===T_MON)?[HIST,N-1]:(tab===T_RULE?[0,HIST-1]:[0,N-1]);
     const chartLabel=(tab===T_DATA)?null:CHARTNAME[rule];
-    const o={tab:tab,machine:mach,rule:rule,seed:seed,shownHours:shown,chartLabel:chartLabel,
+    const o={tab:tab,fault:mach,model:rule,seed:seed,shownHours:shown,chartLabel:chartLabel,
              figureWords:WORDS,
              n:N,hist:HIST,faultStart:FAULT,r:+S.r.toFixed(4),stats:{}};
     for(const k of MON_RULES){
@@ -1131,8 +1134,10 @@ window.LAB={
     return o;},
   set:function(o){
     /* a name this page does not have is ignored, not obeyed */
-    if(o.machine!=null&&FAULTDEF[o.machine]){mach=o.machine;paint('machine',mach);}
-    if(o.rule!=null&&RNAME[o.rule]){rule=o.rule;paint('stat',rule);}
+    /* Day 3's own key names: a caller says {fault, model} */
+    const f=(o.fault!=null)?o.fault:o.machine, m=(o.model!=null)?o.model:o.rule;
+    if(f!=null&&FAULTDEF[f]){mach=f;paint('fault',mach);}
+    if(m!=null&&RNAME[m]){rule=m;paint('model',rule);}
     if(o.seed!=null)seed=+o.seed;
     if(o.tab!=null)applyTab(o.tab); else refresh();}};
 (function(){const mC=document.getElementById('mC');
